@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Happy Deli - Product Entry</title>
+</head>
+
+<body>
+
+    <h1>Happy Deli Inventory</h1>
+    <h2>Product Entry</h2>
+
+    <form method="POST">
+
+        <label for="barcode">Barcode:</label>
+        <input
+            type="text"
+            id="barcode"
+            name="barcode"
+            placeholder="Scan barcode"
+            autofocus
+            required
+        >
+
+        <br><br>
+
+        <label for="quantity">Quantity:</label>
+        <input
+            type="number"
+            id="quantity"
+            name="quantity"
+            min="1"
+            placeholder="Enter quantity"
+            required
+        >
+
+        <br><br>
+
+        <button type="submit">Add Product</button>
+
+    </form>
+
+</body>
+</html>
