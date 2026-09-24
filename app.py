@@ -1,17 +1,43 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 
 app = Flask(__name__)
 
 
+# -------------------------
+# SIGN IN PAGE
+# -------------------------
 @app.route("/")
 def home():
-    return "<h1>Happy Deli POS</h1><p>POS & Inventory System</p>"
+    return render_template("login.html")
 
 
-@app.route("/product-entry")
+# -------------------------
+# FORGOT PASSWORD PAGE
+# -------------------------
+@app.route("/forgot-password")
+def forgot_password():
+    return render_template("forgot_password.html")
+
+
+# -------------------------
+# PRODUCT ENTRY PAGE
+# -------------------------
+@app.route("/product-entry", methods=["GET", "POST"])
 def product_entry():
+
+    if request.method == "POST":
+
+        barcode = request.form["barcode"]
+        quantity = request.form["quantity"]
+
+        print("Barcode:", barcode)
+        print("Quantity:", quantity)
+
     return render_template("product_entry.html")
 
 
+# -------------------------
+# RUN FLASK
+# -------------------------
 if __name__ == "__main__":
     app.run(debug=True)
