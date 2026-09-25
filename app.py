@@ -10,6 +10,13 @@ app = Flask(__name__)
 def home():
     return render_template("login.html")
 
+@app.route("/admin-dashboard")
+def admin_dashboard():
+    return render_template("admin_dashboard.html")
+
+@app.route("/pos")
+def pos():
+    return render_template("pos.html")
 
 # -------------------------
 # FORGOT PASSWORD PAGE

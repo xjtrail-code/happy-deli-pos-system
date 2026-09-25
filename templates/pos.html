@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Happy Deli POS</title>
+</head>
+
+<body>
+
+    <h2>Checkout</h2>
+
+    <!-- PRODUCT SEARCH -->
+    <h3>Add Product</h3>
+
+    <label for="productSearch">Barcode or Product Name:</label>
+
+    <input
+        type="text"
+        id="productSearch"
+        placeholder="Scan barcode or enter product name"
+        autofocus
+    >
+
+    <button type="button" id="addItemButton">
+        Add Item
+    </button>
+
+    <hr>
+
+    <!-- SHOPPING CART -->
+    <h3>Current Transaction</h3>
+
+    <table border="1">
+
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Total</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+
+        <tbody id="cart">
+            <!-- JavaScript will add products here -->
+        </tbody>
+
+    </table>
+
+    <hr>
+
+    <!-- CALCULATIONS -->
+    <h3>Transaction Total</h3>
+
+    <p>Subtotal: $<span id="subtotal">0.00</span></p>
+
+    <p>Tax: $<span id="tax">0.00</span></p>
+
+    <h3>Total: $<span id="total">0.00</span></h3>
+
+    <hr>
+
+    <!-- PAYMENT -->
+    <h3>Payment</h3>
+
+    <button type="button">Cash</button>
+
+    <button type="button">Card</button>
+
+    <br><br>
+
+    <button type="button">Complete Sale</button>
+
+    <button type="button">Void Transaction</button>
+
+    <br><br>
+
+    <a href="/admin-dashboard">Back to Dashboard</a>
+
+
+    <!-- JAVASCRIPT -->
+    <script>
+
+        // Temporary cart
+        let cart = [];
+
+        // Connecticut sales tax
+        const taxRate = 0.0635;
+
+
+        function calculateTotals() {
+
+            let subtotal = 0;
+
+            for (let item of cart) {
+
+                subtotal = subtotal + (item.price * item.quantity);
+
+            }
+
+            let tax = subtotal * taxRate;
+
+            let total = subtotal + tax;
+
+
+            document.getElementById("subtotal").textContent =
+                subtotal.toFixed(2);
+
+            document.getElementById("tax").textContent =
+                tax.toFixed(2);
+
+            document.getElementById("total").textContent =
+                total.toFixed(2);
+        }
+
+    </script>
+
+</body>
+
+</html>
