@@ -55,9 +55,10 @@
     <br><br>
 
     <!-- Account -->
-    <a href="/">
-        <button>Log Out</button>
-    </a>
+    <form method="post" action="{{ url_for('logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ session['csrf_token'] }}">
+        <button type="submit">Log Out</button>
+    </form>
 
 </body>
 

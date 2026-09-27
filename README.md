@@ -201,3 +201,25 @@ Fall 2026
 ### Current Development Status
 
 This README will be updated throughout development as features are implemented, tested, modified, or removed.
+
+## Run the authentication prototype locally
+
+Create a virtual environment and install dependencies with `pip install -r requirements.txt`.
+Set a long random `SECRET_KEY` environment variable before running Flask. For example,
+generate one with `python -c "import secrets; print(secrets.token_hex(32))"` and set it
+in your terminal environment. Do not commit it to Git.
+
+On first run, initialize the database and create individual accounts:
+
+```text
+flask --app 'app:create_app' init-db
+flask --app 'app:create_app' create-user owner --role admin
+flask --app 'app:create_app' create-user cashier1 --role cashier
+flask --app 'app:create_app' run
+```
+
+The account commands prompt for passwords. By default, development uses a local SQLite
+file under `instance/`. `DATABASE_URL` can point at PostgreSQL using a
+`postgresql+psycopg://...` URL when the team finalizes the database. Do not use a
+development database for real store information. Password recovery, employee account
+management, product storage, and checkout are still pending.

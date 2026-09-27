@@ -9,7 +9,12 @@
 
     <h2>Sign In</h2>
 
-    <form>
+    {% for message in get_flashed_messages() %}
+    <p role="alert">{{ message }}</p>
+    {% endfor %}
+
+    <form method="post" action="{{ url_for('home') }}">
+        <input type="hidden" name="csrf_token" value="{{ session['csrf_token'] }}">
 
         <label for="username">Username:</label>
         <input

@@ -76,7 +76,13 @@
 
     <br><br>
 
-    <a href="/admin-dashboard">Back to Dashboard</a>
+    {% if g.user.role == 'admin' %}
+    <a href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a>
+    {% endif %}
+    <form method="post" action="{{ url_for('logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ session['csrf_token'] }}">
+        <button type="submit">Log Out</button>
+    </form>
 
 
     <!-- JAVASCRIPT -->
