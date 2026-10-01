@@ -76,7 +76,10 @@
 
     <br><br>
 
+    {% if g.user.role == 'admin' %}
     <a href="/admin-dashboard">Back to Dashboard</a>
+    {% endif %}
+    {% include '_logout.html' %}
 
 
     <!-- JAVASCRIPT -->

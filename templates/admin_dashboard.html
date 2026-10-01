@@ -15,7 +15,7 @@
 
     <!-- Admin Information -->
     <h2>Admin Dashboard</h2>
-    <p>Welcome, Admin</p>
+    <p>Welcome, {{ g.user.username }}</p>
 
     <hr>
 
@@ -55,9 +55,7 @@
     <br><br>
 
     <!-- Account -->
-    <a href="/">
-        <button>Log Out</button>
-    </a>
+    {% include '_logout.html' %}
 
 </body>
 
