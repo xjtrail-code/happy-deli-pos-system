@@ -39,6 +39,14 @@ class User(db.Model):
     __table_args__ = (db.CheckConstraint("role IN ('admin', 'cashier')"),)
 
 
+class Product(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    barcode = db.Column(db.String(100), unique=True, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+
+
 def login_required(role=None):
     def decorate(view):
         @wraps(view)
@@ -115,13 +123,54 @@ def forgot_password():
 @app.route('/product-entry', methods=['GET', 'POST'])
 @login_required('admin')
 def product_entry():
-    if request.method == 'POST':
-        barcode = request.form['barcode']
-        quantity = request.form['quantity']
-        print('Barcode:', barcode)
-        print('Quantity:', quantity)
-    return render_template('product_entry.html')
+    message = None
 
+    if request.method == 'POST':
+        barcode = request.form['barcode'].strip()
+        product_name = request.form['product_name'].strip()
+        price = float(request.form['price'])
+        quantity = int(request.form['quantity'])
+
+        # Check if the barcode is already in inventory
+        existing_product = db.session.scalar(
+            db.select(Product).where(Product.barcode == barcode)
+        )
+
+        if existing_product:
+            # Product already exists - add to its quantity
+            existing_product.quantity += quantity
+            existing_product.price = price
+
+            message = (
+                f"{existing_product.name} was added successfully! "
+                f"New quantity: {existing_product.quantity}"
+            )
+
+        else:
+            # This is a brand-new product
+            product = Product(
+                barcode=barcode,
+                name=product_name,
+                price=price,
+                quantity=quantity
+            )
+
+            db.session.add(product)
+
+            message = f"{product_name} was added successfully!"
+
+        db.session.commit()
+
+    return render_template(
+        'product_entry.html',
+        message=message
+    )
+
+@app.route('/inventory')
+@login_required('admin')
+def inventory():
+    products = db.session.scalars(db.select(Product)).all()
+    return render_template('inventory.html', products=products)
 
 @app.cli.command('init-db')
 def init_db():

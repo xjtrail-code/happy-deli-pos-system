@@ -6,10 +6,15 @@
 
 <body>
 
-    <h1>Happy Deli Inventory</h1>
+    <h1> Inventory</h1>
     <h2>Product Entry</h2>
 
+    {% if message %}
+    <p><strong>{{ message }}</strong></p>
+{% endif %}
+
     <form method="POST">
+
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <label for="barcode">Barcode:</label>
@@ -19,6 +24,30 @@
             name="barcode"
             placeholder="Scan barcode"
             autofocus
+            required
+        >
+
+        <br><br>
+
+        <label for="product_name">Product Name:</label>
+        <input
+            type="text"
+            id="product_name"
+            name="product_name"
+            placeholder="Enter product name"
+            required
+        >
+
+        <br><br>
+
+        <label for="price">Price:</label>
+        <input
+            type="number"
+            id="price"
+            name="price"
+            min="0"
+            step="0.01"
+            placeholder="Enter price"
             required
         >
 
@@ -39,6 +68,10 @@
         <button type="submit">Add Product</button>
 
     </form>
+
+    <br>
+
+    <a href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a>
 
 </body>
 </html>

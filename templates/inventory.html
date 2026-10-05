@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Happy Deli - Inventory</title>
+</head>
+
+<body>
+  
+
+    <h1>Inventory</h1>
+
+    <a href="{{ url_for('product_entry') }}">Add Product</a>
+    <br><br>
+
+    <table border="1" cellpadding="10">
+
+        <tr>
+            <th>Product</th>
+            <th>Barcode</th>
+            <th>Price</th>
+            <th>Quantity</th>
+        </tr>
+
+        {% for product in products %}
+        <tr>
+            <td>{{ product.name }}</td>
+            <td>{{ product.barcode }}</td>
+            <td>${{ "%.2f"|format(product.price) }}</td>
+            <td>{{ product.quantity }}</td>
+        </tr>
+        {% endfor %}
+
+    </table>
+
+    <br>
+
+    <a href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a>
+
+</body>
+</html>
