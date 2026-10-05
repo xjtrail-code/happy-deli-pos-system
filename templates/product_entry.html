@@ -6,17 +6,18 @@
 
 <body>
 
-    <h1> Inventory</h1>
+    <h1>Inventory</h1>
     <h2>Product Entry</h2>
 
     {% if message %}
-    <p><strong>{{ message }}</strong></p>
-{% endif %}
+        <p><strong>{{ message }}</strong></p>
+    {% endif %}
 
     <form method="POST">
 
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
+        <!-- BARCODE -->
         <label for="barcode">Barcode:</label>
         <input
             type="text"
@@ -27,8 +28,18 @@
             required
         >
 
+        <button type="button" onclick="lookupProduct()">
+            Check Barcode
+        </button>
+
         <br><br>
 
+        <!-- This will show whether the product was found -->
+        <div id="product_status"></div>
+
+        <br>
+
+        <!-- PRODUCT NAME -->
         <label for="product_name">Product Name:</label>
         <input
             type="text"
@@ -40,6 +51,7 @@
 
         <br><br>
 
+        <!-- PRICE -->
         <label for="price">Price:</label>
         <input
             type="number"
@@ -53,6 +65,7 @@
 
         <br><br>
 
+        <!-- QUANTITY -->
         <label for="quantity">Quantity:</label>
         <input
             type="number"
@@ -71,7 +84,73 @@
 
     <br>
 
+    <a href="{{ url_for('inventory') }}">View Inventory</a>
+
+    <br><br>
+
     <a href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a>
+
+
+    <script>
+
+        function lookupProduct() {
+
+            const barcode = document.getElementById("barcode").value;
+
+            if (!barcode) {
+                document.getElementById("product_status").innerHTML =
+                    "<strong>Please enter a barcode.</strong>";
+                return;
+            }
+
+            fetch("/product-lookup/" + encodeURIComponent(barcode))
+                .then(response => response.json())
+                .then(data => {
+
+                    const status = document.getElementById("product_status");
+                    const name = document.getElementById("product_name");
+                    const price = document.getElementById("price");
+                    const quantity = document.getElementById("quantity");
+
+                    if (data.found) {
+
+                        status.innerHTML =
+                            "<strong>Product Found: " +
+                            data.name +
+                            " | Current Stock: " +
+                            data.quantity +
+                            "</strong>";
+
+                        name.value = data.name;
+                        price.value = data.price;
+
+                        // Existing product information should not
+                        // need to be typed again.
+                        name.readOnly = true;
+                        price.readOnly = true;
+
+                        quantity.value = "";
+                        quantity.focus();
+
+                    } else {
+
+                        status.innerHTML =
+                            "<strong>New Product - Barcode Not Found</strong>";
+
+                        name.value = "";
+                        price.value = "";
+
+                        name.readOnly = false;
+                        price.readOnly = false;
+
+                        name.focus();
+                    }
+
+                });
+
+        }
+
+    </script>
 
 </body>
 </html>

@@ -27,7 +27,8 @@
 
     <hr>
 
-    <!-- SHOPPING CART -->
+
+    <!-- CURRENT TRANSACTION -->
     <h3>Current Transaction</h3>
 
     <table border="1">
@@ -38,84 +39,645 @@
                 <th>Quantity</th>
                 <th>Price</th>
                 <th>Total</th>
-                <th>Action</th>
             </tr>
         </thead>
 
         <tbody id="cart">
-            <!-- JavaScript will add products here -->
+            <!-- Products appear here -->
         </tbody>
 
     </table>
 
     <hr>
 
-    <!-- CALCULATIONS -->
+
+    <!-- TRANSACTION TOTAL -->
     <h3>Transaction Total</h3>
 
-    <p>Subtotal: $<span id="subtotal">0.00</span></p>
+    <p>
+        Subtotal: $<span id="subtotal">0.00</span>
+    </p>
 
-    <p>Tax: $<span id="tax">0.00</span></p>
+    <p>
+        Tax: $<span id="tax">0.00</span>
+    </p>
 
-    <h3>Total: $<span id="total">0.00</span></h3>
+    <h3>
+        Total: $<span id="total">0.00</span>
+    </h3>
 
     <hr>
+
 
     <!-- PAYMENT -->
     <h3>Payment</h3>
 
-    <button type="button">Cash</button>
+    <button type="button" id="cashButton">
+        Cash
+    </button>
 
-    <button type="button">Card</button>
+    <button type="button" id="cardButton">
+        Card
+    </button>
+
+    <p>
+        Payment Method:
+        <strong>
+            <span id="paymentMethod">None Selected</span>
+        </strong>
+    </p>
+
+
+    <!-- CASH PAYMENT -->
+    <div id="cashSection" style="display: none;">
+
+        <label for="cashReceived">
+            Cash Received:
+        </label>
+
+        <input
+            type="number"
+            id="cashReceived"
+            min="0"
+            step="0.01"
+            placeholder="0.00"
+        >
+
+        <p>
+            Change Due:
+            $<span id="changeDue">0.00</span>
+        </p>
+
+    </div>
+
+
+    <br>
+
+    <button type="button" id="completeSaleButton">
+        Complete Sale
+    </button>
+
+    <button type="button" id="voidTransactionButton">
+        Void Transaction
+    </button>
 
     <br><br>
 
-    <button type="button">Complete Sale</button>
-
-    <button type="button">Void Transaction</button>
-
-    <br><br>
 
     {% if g.user.role == 'admin' %}
-    <a href="/admin-dashboard">Back to Dashboard</a>
+        <a href="{{ url_for('admin_dashboard') }}">
+            Back to Dashboard
+        </a>
     {% endif %}
+
     {% include '_logout.html' %}
+
 
 
     <!-- JAVASCRIPT -->
     <script>
 
-        // Temporary cart
+        // Current transaction
         let cart = [];
+
+        // Selected payment method
+        let paymentMethod = null;
 
         // Connecticut sales tax
         const taxRate = 0.0635;
 
 
+
+        // ---------------------------------
+        // DISPLAY CURRENT TRANSACTION
+        // ---------------------------------
+
+        function displayCart() {
+
+            const cartTable =
+                document.getElementById("cart");
+
+            cartTable.innerHTML = "";
+
+
+            for (let item of cart) {
+
+                const row =
+                    document.createElement("tr");
+
+
+                row.innerHTML = `
+                    <td>${item.name}</td>
+                    <td>${item.quantity}</td>
+                    <td>$${item.price.toFixed(2)}</td>
+                    <td>$${(item.price * item.quantity).toFixed(2)}</td>
+                `;
+
+
+                cartTable.appendChild(row);
+            }
+        }
+
+
+
+        // ---------------------------------
+        // CALCULATE TOTALS
+        // ---------------------------------
+
         function calculateTotals() {
 
             let subtotal = 0;
 
+
             for (let item of cart) {
 
-                subtotal = subtotal + (item.price * item.quantity);
+                subtotal +=
+                    item.price * item.quantity;
+            }
+
+
+            const tax =
+                subtotal * taxRate;
+
+            const total =
+                subtotal + tax;
+
+
+            document.getElementById(
+                "subtotal"
+            ).textContent =
+                subtotal.toFixed(2);
+
+
+            document.getElementById(
+                "tax"
+            ).textContent =
+                tax.toFixed(2);
+
+
+            document.getElementById(
+                "total"
+            ).textContent =
+                total.toFixed(2);
+
+
+            // Recalculate change if cash
+            // has already been entered
+
+            if (paymentMethod === "Cash") {
+
+                calculateChange();
+            }
+        }
+
+
+
+        // ---------------------------------
+        // ADD ITEM
+        // ---------------------------------
+
+        document.getElementById(
+            "addItemButton"
+        ).addEventListener(
+            "click",
+            function () {
+
+
+                const search =
+                    document.getElementById(
+                        "productSearch"
+                    ).value.trim();
+
+
+                if (!search) {
+                    return;
+                }
+
+
+                fetch(
+                    "/product-lookup/" +
+                    encodeURIComponent(search)
+                )
+
+                .then(response => response.json())
+
+                .then(product => {
+
+
+                    if (!product.found) {
+
+                        alert("Product not found.");
+
+                        return;
+                    }
+
+
+                    const existingItem =
+                        cart.find(
+                            item =>
+                                item.barcode === search
+                        );
+
+
+                    if (existingItem) {
+
+                        existingItem.quantity += 1;
+
+                    } else {
+
+                        cart.push({
+
+                            barcode: search,
+
+                            name: product.name,
+
+                            price: Number(
+                                product.price
+                            ),
+
+                            quantity: 1
+
+                        });
+
+                    }
+
+
+                    displayCart();
+
+                    calculateTotals();
+
+
+                    document.getElementById(
+                        "productSearch"
+                    ).value = "";
+
+
+                    document.getElementById(
+                        "productSearch"
+                    ).focus();
+
+                })
+
+                .catch(error => {
+
+                    console.error(error);
+
+                    alert(
+                        "Unable to add product."
+                    );
+
+                });
+
+            }
+        );
+
+
+
+        // ---------------------------------
+        // CASH PAYMENT
+        // ---------------------------------
+
+        document.getElementById(
+            "cashButton"
+        ).addEventListener(
+            "click",
+            function () {
+
+
+                paymentMethod = "Cash";
+
+
+                document.getElementById(
+                    "paymentMethod"
+                ).textContent = "Cash";
+
+
+                document.getElementById(
+                    "cashSection"
+                ).style.display = "block";
+
+
+                document.getElementById(
+                    "cashReceived"
+                ).focus();
+
+            }
+        );
+
+
+
+        // ---------------------------------
+        // CARD PAYMENT
+        // ---------------------------------
+
+        document.getElementById(
+            "cardButton"
+        ).addEventListener(
+            "click",
+            function () {
+
+
+                paymentMethod = "Card";
+
+
+                document.getElementById(
+                    "paymentMethod"
+                ).textContent = "Card";
+
+
+                document.getElementById(
+                    "cashSection"
+                ).style.display = "none";
+
+
+                document.getElementById(
+                    "cashReceived"
+                ).value = "";
+
+
+                document.getElementById(
+                    "changeDue"
+                ).textContent = "0.00";
+
+            }
+        );
+
+
+
+        // ---------------------------------
+        // CALCULATE CASH CHANGE
+        // ---------------------------------
+
+        function calculateChange() {
+
+            const cashReceived =
+                Number(
+                    document.getElementById(
+                        "cashReceived"
+                    ).value
+                );
+
+
+            const total =
+                Number(
+                    document.getElementById(
+                        "total"
+                    ).textContent
+                );
+
+
+            let change =
+                cashReceived - total;
+
+
+            if (change < 0) {
+
+                change = 0;
 
             }
 
-            let tax = subtotal * taxRate;
 
-            let total = subtotal + tax;
+            document.getElementById(
+                "changeDue"
+            ).textContent =
+                change.toFixed(2);
 
-
-            document.getElementById("subtotal").textContent =
-                subtotal.toFixed(2);
-
-            document.getElementById("tax").textContent =
-                tax.toFixed(2);
-
-            document.getElementById("total").textContent =
-                total.toFixed(2);
         }
+
+
+        document.getElementById(
+            "cashReceived"
+        ).addEventListener(
+            "input",
+            calculateChange
+        );
+
+
+
+        // ---------------------------------
+        // COMPLETE SALE
+        // ---------------------------------
+
+        document.getElementById(
+            "completeSaleButton"
+        ).addEventListener(
+            "click",
+            function () {
+
+
+                if (cart.length === 0) {
+
+                    return;
+
+                }
+
+
+                if (paymentMethod === null) {
+
+                    alert(
+                        "Please select Cash or Card."
+                    );
+
+                    return;
+
+                }
+
+
+                const formData =
+                    new FormData();
+
+
+                formData.append(
+                    "csrf_token",
+                    "{{ csrf_token() }}"
+                );
+
+
+                formData.append(
+                    "cart",
+                    JSON.stringify(cart)
+                );
+                
+                formData.append(
+                "total",
+                document.getElementById("total").textContent
+
+
+            );
+
+            formData.append(
+            "payment_method",
+             paymentMethod
+
+
+        );
+
+                fetch(
+                    "/complete-sale",
+                    {
+
+                        method: "POST",
+
+                        body: formData
+
+                    }
+                )
+
+                .then(response => response.json())
+
+                .then(data => {
+
+
+                    if (data.success) {
+
+
+                        alert(
+                            "Sale completed!"
+                        );
+
+
+                        // Clear transaction
+                        cart = [];
+
+                        paymentMethod = null;
+
+
+                        displayCart();
+
+                        calculateTotals();
+
+
+                        // Reset payment area
+
+                        document.getElementById(
+                            "paymentMethod"
+                        ).textContent =
+                            "None Selected";
+
+
+                        document.getElementById(
+                            "cashSection"
+                        ).style.display =
+                            "none";
+
+
+                        document.getElementById(
+                            "cashReceived"
+                        ).value = "";
+
+
+                        document.getElementById(
+                            "changeDue"
+                        ).textContent =
+                            "0.00";
+
+
+                        document.getElementById(
+                            "productSearch"
+                        ).focus();
+
+                    } else {
+
+                        alert(
+                            "Unable to complete sale."
+                        );
+
+                    }
+
+                })
+
+                .catch(error => {
+
+                    console.error(error);
+
+                    alert(
+                        "Unable to complete sale."
+                    );
+
+                });
+
+            }
+        );
+
+
+
+        // ---------------------------------
+        // VOID TRANSACTION
+        // ---------------------------------
+
+        document.getElementById(
+            "voidTransactionButton"
+        ).addEventListener(
+            "click",
+            function () {
+
+
+                cart = [];
+
+                paymentMethod = null;
+
+
+                displayCart();
+
+                calculateTotals();
+
+
+                document.getElementById(
+                    "paymentMethod"
+                ).textContent =
+                    "None Selected";
+
+
+                document.getElementById(
+                    "cashSection"
+                ).style.display =
+                    "none";
+
+
+                document.getElementById(
+                    "cashReceived"
+                ).value = "";
+
+
+                document.getElementById(
+                    "changeDue"
+                ).textContent =
+                    "0.00";
+
+
+                document.getElementById(
+                    "productSearch"
+                ).focus();
+
+            }
+        );
+
+
+
+        // ---------------------------------
+        // ENTER KEY = ADD ITEM
+        // ---------------------------------
+
+        document.getElementById(
+            "productSearch"
+        ).addEventListener(
+            "keydown",
+            function (event) {
+
+
+                if (event.key === "Enter") {
+
+                    event.preventDefault();
+
+                    document.getElementById(
+                        "addItemButton"
+                    ).click();
+
+                }
+
+            }
+        );
+
 
     </script>
 

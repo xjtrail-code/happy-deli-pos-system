@@ -46,6 +46,15 @@ class Product(db.Model):
     price = db.Column(db.Float, nullable=False)
     quantity = db.Column(db.Integer, nullable=False)
 
+class Sale(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    total = db.Column(db.Float, nullable=False)
+    payment_method = db.Column(db.String(20), nullable=False)
+    created_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=db.func.now()
+    )
 
 def login_required(role=None):
     def decorate(view):
@@ -172,6 +181,38 @@ def inventory():
     products = db.session.scalars(db.select(Product)).all()
     return render_template('inventory.html', products=products)
 
+@app.route('/product-lookup/<barcode>')
+@login_required()
+def product_lookup(barcode):
+    product = db.session.scalar(
+        db.select(Product).where(Product.barcode == barcode)
+    )
+
+    if product:
+        return {
+            'found': True,
+            'name': product.name,
+            'price': product.price,
+            'quantity': product.quantity
+        }
+
+    return {
+        'found': False
+    }
+
+@app.post('/delete-product/<int:product_id>')
+@login_required()
+def delete_product(product_id):
+    product = db.session.get(Product, product_id)
+
+    if product is None:
+        abort(404)
+
+    db.session.delete(product)
+    db.session.commit()
+
+    return redirect(url_for('inventory'))
+
 @app.cli.command('init-db')
 def init_db():
     """Create missing tables without deleting existing data."""
@@ -197,5 +238,41 @@ def create_user(username, role, password):
     click.echo(f'Created {role} account: {username}')
 
 
+@app.post('/complete-sale')
+@login_required()
+def complete_sale():
+    import json
+
+    try:
+        cart = json.loads(request.form.get('cart', '[]'))
+
+        for item in cart:
+            product = db.session.scalar(
+                db.select(Product).where(
+                    Product.barcode == item['barcode']
+                )
+            )
+
+            if product:
+                product.quantity -= int(item['quantity'])
+
+        db.session.commit()
+
+        return {'success': True}
+
+    except Exception as error:
+        db.session.rollback()
+        print("COMPLETE SALE ERROR:", error)
+
+        return {
+            'success': False,
+            'error': str(error)
+        }, 500
+
+@app.route('/reports')
+@login_required('admin')
+def reports():
+    return render_template('reports.html')
+    
 if __name__ == '__main__':
     app.run(debug=True)
