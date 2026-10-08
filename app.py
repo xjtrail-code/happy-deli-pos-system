@@ -1,6 +1,21 @@
+import os
+from dotenv import load_dotenv
+
+
 from flask import Flask, render_template, request
+from flask_sqlalchemy import SQLAlchemy
+from models import db
+from models import (User, Category, Product, Transaction, TransactionItem, 
+                    Inventory, Supplier, SupplierProduct, InventoryAdjustment, 
+                    DemandForecast, LowStockAlert, ReorderRecommendation)
+
+load_dotenv()
 
 app = Flask(__name__)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db.init_app(app)
 
 
 # -------------------------
@@ -42,9 +57,27 @@ def product_entry():
 
     return render_template("product_entry.html")
 
+#--------------------------
+# TESTING DATABASE CONNECTION
+#--------------------------
+@app.route("/test-db")
+def test_db():
+    try:
+        # Attempt to connect to the database
+        db.session.execute(db.text('SELECT 1'))
+        return "Database connection successful!"
+    except Exception as e:
+        return f"Database connection failed: {e}"
+
+
 
 # -------------------------
 # RUN FLASK
 # -------------------------
 if __name__ == "__main__":
+    with app.app_context():
+        #db.drop_all()
+        #print("All tables dropped successfully.")
+        db.create_all()
+        print("All tables created successfully.")    
     app.run(debug=True)
