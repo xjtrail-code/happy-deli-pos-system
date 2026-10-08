@@ -112,10 +112,42 @@ def logout():
     return redirect(url_for('home'))
 
 
+
 @app.route('/admin-dashboard')
 @login_required('admin')
 def admin_dashboard():
-    return render_template('admin_dashboard.html')
+    from datetime import datetime, date
+
+    # Get today's completed sales
+    today = date.today()
+
+    sales = db.session.scalars(
+        db.select(Sale)
+        .where(Sale.created_at >= datetime.combine(today, datetime.min.time()))
+        .where(Sale.created_at < datetime.combine(
+            date.fromordinal(today.toordinal() + 1),
+            datetime.min.time()
+        ))
+    ).all()
+
+    # Calculate today's totals
+    todays_sales = round(sum(sale.total for sale in sales), 2)
+    todays_transactions = len(sales)
+
+    # Count products running low (5 or fewer)
+    low_stock_alerts = db.session.scalar(
+        db.select(db.func.count(Product.id))
+        .where(Product.quantity <= 5)
+    ) or 0
+
+    return render_template(
+        'admin_dashboard.html',
+        todays_sales=todays_sales,
+        todays_transactions=todays_transactions,
+        low_stock_alerts=low_stock_alerts,
+        profit_margin=None
+    )
+
 
 
 @app.route('/pos')
@@ -238,41 +270,161 @@ def create_user(username, role, password):
     click.echo(f'Created {role} account: {username}')
 
 
+
 @app.post('/complete-sale')
 @login_required()
 def complete_sale():
     import json
+    from decimal import Decimal, ROUND_HALF_UP
 
     try:
         cart = json.loads(request.form.get('cart', '[]'))
+        payment_method = request.form.get(
+            'payment_method', ''
+        ).strip().lower()
+
+        if payment_method not in ('cash', 'card'):
+            return {
+                'success': False,
+                'error': 'Please select Cash or Card.'
+            }, 400
+
+        if not isinstance(cart, list) or not cart:
+            return {
+                'success': False,
+                'error': 'Your cart is empty.'
+            }, 400
+
+        quantities = {}
 
         for item in cart:
+            barcode = str(item['barcode'])
+            quantity = int(item['quantity'])
+
+            if quantity <= 0:
+                return {
+                    'success': False,
+                    'error': 'Invalid quantity.'
+                }, 400
+
+            quantities[barcode] = (
+                quantities.get(barcode, 0) + quantity
+            )
+
+        subtotal = Decimal('0.00')
+
+        for barcode, quantity in quantities.items():
             product = db.session.scalar(
                 db.select(Product).where(
-                    Product.barcode == item['barcode']
+                    Product.barcode == barcode
                 )
             )
 
-            if product:
-                product.quantity -= int(item['quantity'])
+            if product is None:
+                db.session.rollback()
+                return {
+                    'success': False,
+                    'error': f'Product {barcode} not found.'
+                }, 400
 
+            if product.quantity < quantity:
+                db.session.rollback()
+                return {
+                    'success': False,
+                    'error': f'Not enough stock for {product.name}.'
+                }, 400
+
+            product.quantity -= quantity
+
+            subtotal += (
+                Decimal(str(product.price)) * quantity
+            )
+
+        subtotal = subtotal.quantize(
+            Decimal('0.01'),
+            rounding=ROUND_HALF_UP
+        )
+
+        tax = (subtotal * Decimal('0.0635')).quantize(
+            Decimal('0.01'),
+            rounding=ROUND_HALF_UP
+        )
+
+        total = subtotal + tax
+
+        sale = Sale(
+            total=float(total),
+            payment_method=payment_method
+        )
+
+        db.session.add(sale)
         db.session.commit()
 
-        return {'success': True}
+        return {
+            'success': True,
+            'sale_id': sale.id,
+            'total': float(total)
+        }
 
-    except Exception as error:
+    except (ValueError, TypeError, KeyError):
         db.session.rollback()
-        print("COMPLETE SALE ERROR:", error)
+        return {
+            'success': False,
+            'error': 'Invalid transaction data.'
+        }, 400
+
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('Sale failed')
 
         return {
             'success': False,
-            'error': str(error)
+            'error': 'Unable to complete sale.'
         }, 500
+
 
 @app.route('/reports')
 @login_required('admin')
 def reports():
-    return render_template('reports.html')
-    
+    sales = db.session.scalars(
+        db.select(Sale).order_by(Sale.created_at.desc())
+    ).all()
+
+    total_revenue = sum(sale.total for sale in sales)
+    total_transactions = len(sales)
+
+    cash_sales = sum(
+        sale.total for sale in sales
+        if sale.payment_method.lower() == 'cash'
+    )
+
+    card_sales = sum(
+        sale.total for sale in sales
+        if sale.payment_method.lower() == 'card'
+    )
+
+    return render_template(
+        'reports.html',
+        sales=sales,
+        total_revenue=total_revenue,
+        total_transactions=total_transactions,
+        cash_sales=cash_sales,
+        card_sales=card_sales
+    )
+
+   # EMPLOYEE MANAGEMENT
+@app.route('/employee-management')
+@login_required('admin')
+def employee_management():
+    return render_template('employee_management.html')
+
+
+# SUPPLIER MANAGEMENT
+@app.route('/supplier-management')
+@login_required('admin')
+def supplier_management():
+    return render_template('supplier_management.html')
+
+
 if __name__ == '__main__':
     app.run(debug=True)

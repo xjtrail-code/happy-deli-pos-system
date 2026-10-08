@@ -482,6 +482,27 @@
 
                 }
 
+                
+if (paymentMethod === "Cash") {
+    const cashInput =
+        document.getElementById("cashReceived");
+
+    const cashReceived = Number(cashInput.value);
+
+    const total = Number(
+        document.getElementById("total").textContent
+    );
+
+    if (
+        cashInput.value.trim() === "" ||
+        !Number.isFinite(cashReceived) ||
+        cashReceived < total
+    ) {
+        alert("Insufficient cash received.");
+        return;
+    }
+}
+
 
                 const formData =
                     new FormData();
@@ -578,22 +599,14 @@
 
                     } else {
 
-                        alert(
-                            "Unable to complete sale."
-                        );
-
+                        alert(data.error || "Unable to complete sale.");
                     }
 
                 })
 
                 .catch(error => {
-
                     console.error(error);
-
-                    alert(
-                        "Unable to complete sale."
-                    );
-
+                    alert("Unable to complete sale. Please try again.");
                 });
 
             }

@@ -1,7 +1,10 @@
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Happy Deli - Reports & Analytics</title>
 </head>
 
@@ -9,16 +12,50 @@
 
     <h1>Reports & Analytics</h1>
 
-    <h3>Today's Sales</h3>
-    <p>$0.00</p>
+    <h3>Total Revenue</h3>
+    <p>${{ "%.2f"|format(total_revenue) }}</p>
 
-    <h3>Transactions Today</h3>
-    <p>0</p>
+    <h3>Total Transactions</h3>
+    <p>{{ total_transactions }}</p>
 
     <h3>Payment Breakdown</h3>
 
-    <p>Cash Sales: $0.00</p>
-    <p>Card Sales: $0.00</p>
+    <p>Cash Sales: ${{ "%.2f"|format(cash_sales) }}</p>
+    <p>Card Sales: ${{ "%.2f"|format(card_sales) }}</p>
+
+    <hr>
+
+    <h2>Transaction History</h2>
+
+    <table border="1" cellpadding="10">
+        <thead>
+            <tr>
+                <th>Transaction ID</th>
+                <th>Date & Time</th>
+                <th>Payment Method</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for sale in sales %}
+            <tr>
+                <td>#{{ sale.id }}</td>
+                <td>
+                    {{ sale.created_at.strftime('%m/%d/%Y %I:%M %p') }}
+                </td>
+                <td>{{ sale.payment_method|capitalize }}</td>
+                <td>${{ "%.2f"|format(sale.total) }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4">
+                    No completed transactions yet.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 
     <br>
 

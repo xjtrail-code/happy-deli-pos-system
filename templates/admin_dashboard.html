@@ -19,13 +19,14 @@
 
     <hr>
 
-    <!-- Store Overview -->
-    <h3>Today's Store Overview</h3>
+  
+<p>Today's Sales: ${{ "%.2f"|format(todays_sales) }}</p>
 
-    <p>Today's Sales: $0.00</p>
-    <p>Today's Transactions: 0</p>
-    <p>Low Stock Alerts: 0</p>
-    <p>Profit Margin: 0%</p>
+<p>Today's Transactions: {{ todays_transactions }}</p>
+
+<p>Low Stock Alerts: {{ low_stock_alerts }}</p>
+
+<p>Profit Margin: Coming Soon</p>
 
     <hr>
 
@@ -45,13 +46,13 @@
 </a>
     </a>
 
-    <a href="/employees">
-        <button>Employee Management</button>
-    </a>
+   <a href="{{ url_for('employee_management') }}">
+    <button type="button">Employee Management</button>
+</a>
 
-    <a href="/suppliers">
-        <button>Supplier Management</button>
-    </a>
+<a href="{{ url_for('supplier_management') }}">
+    <button type="button">Supplier Management</button>
+</a>
 
     <br><br>
 
