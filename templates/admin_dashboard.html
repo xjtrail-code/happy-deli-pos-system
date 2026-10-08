@@ -1,64 +1,333 @@
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Happy Deli POS - Admin Dashboard</title>
+
+    <!-- SHARED STYLESHEET -->
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/styles.css') }}">
+
+    <!-- CHART.JS -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- LUCIDE ICONS -->
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
 </head>
 
-<body>
+<body class="dashboard-page">
 
-    <!-- Store / System Header -->
-    <h1>Happy Deli POS</h1>
-    <p>POS & Inventory System</p>
+    <div class="dashboard-layout">
 
-    <hr>
+        <!-- SIDEBAR -->
+        <aside class="dashboard-sidebar">
 
-    <!-- Admin Information -->
-    <h2>Admin Dashboard</h2>
-    <p>Welcome, {{ g.user.username }}</p>
+            <div class="sidebar-brand">
+                <h2>Happy <strong>Deli</strong></h2>
+                <p>POS & Inventory System</p>
+            </div>
 
-    <hr>
+            <nav class="sidebar-nav" aria-label="Admin navigation">
 
-  
-<p>Today's Sales: ${{ "%.2f"|format(todays_sales) }}</p>
+                <a href="{{ url_for('admin_dashboard') }}"
+                   class="nav-link active"
+                   aria-current="page">
+                    <i data-lucide="layout-dashboard"></i>
+                    Dashboard
+                </a>
 
-<p>Today's Transactions: {{ todays_transactions }}</p>
+                <a href="{{ url_for('pos') }}" class="nav-link">
+                    <i data-lucide="shopping-cart"></i>
+                    POS / Checkout
+                </a>
 
-<p>Low Stock Alerts: {{ low_stock_alerts }}</p>
+                <a href="{{ url_for('inventory') }}" class="nav-link">
+                    <i data-lucide="package"></i>
+                    Inventory
+                </a>
 
-<p>Profit Margin: Coming Soon</p>
+                <a href="{{ url_for('product_entry') }}" class="nav-link">
+                    <i data-lucide="scan-barcode"></i>
+                    Product Entry
+                </a>
 
-    <hr>
+                <a href="{{ url_for('reports') }}" class="nav-link">
+                    <i data-lucide="chart-no-axes-column"></i>
+                    Reports & Analytics
+                </a>
 
-    <!-- Main Admin Navigation -->
-    <h3>Management</h3>
+                <a href="{{ url_for('employee_management') }}"
+                   class="nav-link">
+                    <i data-lucide="users"></i>
+                    Employees
+                </a>
 
-    <a href="/pos">
-        <button>POS / Checkout</button>
-    </a>
+                <a href="{{ url_for('supplier_management') }}"
+                   class="nav-link">
+                    <i data-lucide="truck"></i>
+                    Suppliers
+                </a>
 
-    <a href="/inventory">
-        <button>Inventory</button>
-    </a>
+            </nav>
 
-    <a href="{{ url_for('reports') }}">
-    <button type="button">Reports & Analytics</button>
-</a>
-    </a>
+            <div class="sidebar-footer">
+                {% include '_logout.html' %}
+            </div>
 
-   <a href="{{ url_for('employee_management') }}">
-    <button type="button">Employee Management</button>
-</a>
+        </aside>
 
-<a href="{{ url_for('supplier_management') }}">
-    <button type="button">Supplier Management</button>
-</a>
+        <!-- MAIN DASHBOARD CONTENT -->
+        <main class="dashboard-main">
 
-    <br><br>
+            <!-- HEADER -->
+            <header class="dashboard-header">
 
-    <!-- Account -->
-    {% include '_logout.html' %}
+                <div>
+                    <h1>Dashboard Overview</h1>
+                    <p>Monitor your store's performance</p>
+                </div>
+
+                <div class="admin-profile">
+                    <i data-lucide="user-circle"></i>
+                    <span>{{ g.user.username }}</span>
+                </div>
+
+            </header>
+
+            <!-- SUMMARY CARDS -->
+            <section class="dashboard-stats"
+                     aria-label="Store statistics">
+
+                <!-- TODAY'S SALES -->
+                <article class="stat-card">
+                    <div class="stat-icon sales-icon">
+                        <i data-lucide="dollar-sign"></i>
+                    </div>
+
+                    <p>Today's Sales</p>
+
+                    <h2>
+                        ${{ "%.2f"|format(todays_sales|default(0, true)) }}
+                    </h2>
+
+                    <span>Sales recorded today</span>
+                </article>
+
+                <!-- TRANSACTIONS -->
+                <article class="stat-card">
+                    <div class="stat-icon orders-icon">
+                        <i data-lucide="receipt"></i>
+                    </div>
+
+                    <p>Today's Transactions</p>
+
+                    <h2>
+                        {{ todays_transactions|default(0, true) }}
+                    </h2>
+
+                    <span>Completed transactions</span>
+                </article>
+
+                <!-- LOW STOCK -->
+                <article class="stat-card">
+                    <div class="stat-icon stock-icon">
+                        <i data-lucide="alert-triangle"></i>
+                    </div>
+
+                    <p>Low Stock Alerts</p>
+
+                    <h2>
+                        {{ low_stock_alerts|default(0, true) }}
+                    </h2>
+
+                    <span>Products needing attention</span>
+                </article>
+
+                <!-- PROFIT MARGIN -->
+                <article class="stat-card">
+                    <div class="stat-icon profit-icon">
+                        <i data-lucide="percent"></i>
+                    </div>
+
+                    <p>Profit Margin</p>
+
+                    <h2>Coming Soon</h2>
+
+                    <span>Awaiting cost-price integration</span>
+                </article>
+
+            </section>
+
+            <!-- ANALYTICS -->
+            <section class="dashboard-content">
+
+                <!-- SALES AND PROFIT CHART -->
+                <article class="dashboard-panel">
+
+                    <div class="panel-header">
+                        <h3>Sales & Profit Trend</h3>
+                        <span class="demo-label">
+                            Preview Data
+                        </span>
+                    </div>
+
+                    <div class="chart-container">
+                        <canvas id="salesProfitChart"
+                                aria-label="Sample sales and profit chart"
+                                role="img"></canvas>
+                    </div>
+
+                    <p class="panel-note">
+                        Example data only. Live chart values
+                        will be connected to the backend.
+                    </p>
+
+                </article>
+
+                <!-- TOP SELLING PRODUCTS -->
+                <article class="dashboard-panel">
+
+                    <div class="panel-header">
+                        <h3>Top Selling Products</h3>
+                    </div>
+
+                    <div class="empty-state">
+                        <i data-lucide="package-search"></i>
+
+                        <h4>Product Analytics Coming Soon</h4>
+
+                        <p>
+                            Best-selling products will appear
+                            here once sales reporting is connected.
+                        </p>
+                    </div>
+
+                </article>
+
+            </section>
+
+            <!-- QUICK ACTIONS -->
+            <section class="dashboard-panel quick-actions">
+
+                <div class="panel-header">
+                    <h3>Quick Actions</h3>
+                </div>
+
+                <div class="action-buttons">
+
+                    <a href="{{ url_for('pos') }}"
+                       class="action-btn primary-action">
+                        <i data-lucide="shopping-cart"></i>
+                        Open POS
+                    </a>
+
+                    <a href="{{ url_for('product_entry') }}"
+                       class="action-btn">
+                        <i data-lucide="plus-circle"></i>
+                        Add Product
+                    </a>
+
+                    <a href="{{ url_for('inventory') }}"
+                       class="action-btn">
+                        <i data-lucide="package"></i>
+                        View Inventory
+                    </a>
+
+                    <a href="{{ url_for('reports') }}"
+                       class="action-btn">
+                        <i data-lucide="bar-chart-3"></i>
+                        View Reports
+                    </a>
+
+                </div>
+
+            </section>
+
+        </main>
+
+    </div>
+
+    <!-- DASHBOARD JAVASCRIPT -->
+    <script>
+
+        // DISPLAY SIDEBAR ICONS
+        if (window.lucide) {
+            lucide.createIcons();
+        }
+
+        // SALES & PROFIT PREVIEW CHART
+        const chartCanvas =
+            document.getElementById("salesProfitChart");
+
+        if (chartCanvas && window.Chart) {
+
+            new Chart(chartCanvas, {
+
+                type: "line",
+
+                data: {
+
+                    labels: [
+                        "Mon", "Tue", "Wed",
+                        "Thu", "Fri", "Sat", "Sun"
+                    ],
+
+                    datasets: [
+                        {
+                            label: "Sales",
+                            data: [
+                                320, 420, 390, 560,
+                                610, 780, 670
+                            ],
+                            borderColor: "#168c75",
+                            backgroundColor:
+                                "rgba(22, 140, 117, 0.08)",
+                            tension: 0.4,
+                            fill: true
+                        },
+
+                        {
+                            label: "Profit",
+                            data: [
+                                115, 145, 130, 205,
+                                230, 300, 255
+                            ],
+                            borderColor: "#7ac7a6",
+                            backgroundColor:
+                                "rgba(122, 199, 166, 0.06)",
+                            tension: 0.4,
+                            fill: true
+                        }
+                    ]
+                },
+
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+
+                    plugins: {
+                        legend: {
+                            position: "top"
+                        }
+                    },
+
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: value => "$" + value
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+    </script>
 
 </body>
-
 </html>

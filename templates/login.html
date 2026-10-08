@@ -1,49 +1,129 @@
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Happy Deli POS - Sign In</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 
-<body>
+<body class="login-page">
 
+    <main class="login-container">
 
-    <h2>Sign In</h2>
+        <!-- HAPPY DELI TITLE -->
+        <h1>Happy <strong>Deli</strong></h1>
 
-    {% if error %}<p role="alert">{{ error }}</p>{% endif %}
-    <form method="POST" action="{{ url_for('home') }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <!-- LOGIN ERROR MESSAGE -->
+        {% if error %}
+            <p class="error-message" role="alert">
+                {{ error }}
+            </p>
+        {% endif %}
 
-        <label for="username">Username:</label>
-        <input
-            type="text"
-            id="username"
-            name="username"
-            autocomplete="username"
-            placeholder="Enter username"
-            required
-        >
+        <!-- LOGIN FORM -->
+        <form method="POST" action="{{ url_for('home') }}">
 
-        <br><br>
+            <!-- CSRF PROTECTION -->
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token() }}"
+            >
 
-        <label for="password">Password:</label>
-        <input
-            type="password"
-            id="password"
-            name="password"
-            autocomplete="current-password"
-            placeholder="Enter password"
-            required
-        >
+            <!-- USERNAME -->
+            <div class="input-group">
 
-        <br>
+                <label for="username">User</label>
 
-        <a href="/forgot-password">Forgot Password?</a>
+                <div class="input-with-icon">
 
-        <br><br>
+                    <input
+                        type="text"
+                        id="username"
+                        name="username"
+                        autocomplete="username"
+                        placeholder="Enter username"
+                        required
+                    >
 
-        <button type="submit">Sign In</button>
+                    <!-- PERSON ICON -->
+                    <svg
+                        class="user-icon"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                    >
+                        <circle cx="12" cy="8" r="4"/>
+                        <path d="M4 21v-2a8 8 0 0 1 16 0v2"/>
+                    </svg>
 
-    </form>
+                </div>
+            </div>
+
+            <!-- PASSWORD -->
+            <div class="input-group">
+
+                <label for="password">Password</label>
+
+                <div class="input-with-icon">
+
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        autocomplete="current-password"
+                        placeholder="Enter password"
+                        required
+                    >
+
+                    <!-- LOCK ICON -->
+                    <svg
+                        class="password-icon"
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                    >
+                        <rect x="4" y="10" width="16" height="11" rx="2"/>
+                        <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
+                    </svg>
+
+                </div>
+            </div>
+
+            <!-- LOGIN BUTTON -->
+            <button type="submit" class="login-button">
+                Login
+            </button>
+
+            <!-- FORGOT PASSWORD -->
+            <a href="{{ url_for('forgot_password') }}"
+               class="forgot-password">
+                Forgot Password?
+            </a>
+
+        </form>
+
+    </main>
 
 </body>
 </html>
