@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Happy Deli - Product Entry</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
 
 <body>
@@ -64,6 +65,26 @@
         >
 
         <br><br>
+
+        <!-- COST PRICE -->
+<label for="cost_price">Cost Price ($):</label>
+<input
+    type="number"
+    id="cost_price"
+    name="cost_price"
+    min="0"
+    step="0.01"
+    placeholder="Enter supplier cost"
+    oninput="calculateProfitMargin()"
+>
+
+<br><br>
+
+<!-- PROFIT MARGIN -->
+<label>Profit Margin:</label>
+<strong id="profit_margin">0.00%</strong>
+
+<br><br>
 
         <!-- QUANTITY -->
         <label for="quantity">Quantity:</label>

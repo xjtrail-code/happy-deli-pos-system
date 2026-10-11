@@ -38,7 +38,7 @@
     <p>Tax: $<span id="tax">0.00</span></p>
     <h3>Total: $<span id="total">0.00</span></h3>
 
-    <hr>
+    <title>Happy Deli - POS Checkout</title>
 
     <!-- PAYMENT -->
     <h3>Payment</h3>
@@ -60,7 +60,8 @@
     <button type="button" id="completeSaleButton">Complete Sale</button>
     <button type="button" id="voidTransactionButton">Void Transaction</button>
 
-    <br><br>
+        const quantityInput =
+            document.getElementById("productQuantity");
 
     {% if g.user.role == 'admin' %}
         <a href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a>
