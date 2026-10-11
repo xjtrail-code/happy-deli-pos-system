@@ -1,25 +1,13 @@
-<!DOCTYPE html>
-<html>
+{% extends "base.html" %}
 
-<head>
-    <title>Happy Deli POS - Admin Dashboard</title>
-</head>
+{% block title %}Happy Deli POS - Admin Dashboard{% endblock %}
 
-<body>
-
-    <!-- Store / System Header -->
-    <h1>Happy Deli POS</h1>
-    <p>POS & Inventory System</p>
-
-    <hr>
-
-    <!-- Admin Information -->
+{% block content %}
     <h2>Admin Dashboard</h2>
     <p>Welcome, {{ g.user.username }}</p>
 
     <hr>
 
-    <!-- Store Overview -->
     <h3>Today's Store Overview</h3>
 
     <p>Today's Sales: $0.00</p>
@@ -29,35 +17,15 @@
 
     <hr>
 
-    <!-- Main Admin Navigation -->
     <h3>Management</h3>
 
-    <a href="/pos">
-        <button>POS / Checkout</button>
-    </a>
-
-    <a href="/inventory">
-        <button>Inventory</button>
-    </a>
-
-    <a href="{{ url_for('reports') }}">
-    <button type="button">Reports & Analytics</button>
-</a>
-    </a>
-
-    <a href="/employees">
-        <button>Employee Management</button>
-    </a>
-
-    <a href="/suppliers">
-        <button>Supplier Management</button>
-    </a>
+    <a href="/pos"><button type="button">POS / Checkout</button></a>
+    <a href="/inventory"><button type="button">Inventory</button></a>
+    <a href="{{ url_for('reports') }}"><button type="button">Reports & Analytics</button></a>
+    <a href="/employees"><button type="button">Employee Management</button></a>
+    <a href="/suppliers"><button type="button">Supplier Management</button></a>
 
     <br><br>
 
-    <!-- Account -->
     {% include '_logout.html' %}
-
-</body>
-
-</html>
+{% endblock %}

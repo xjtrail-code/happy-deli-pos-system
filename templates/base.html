@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>{% block title %}Happy Deli Junco{% endblock %}</title>
+
+    <!-- Bootstrap 5 -->
+    <link
+        href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+        rel="stylesheet"
+    >
+
+    <!-- Bootstrap Icons -->
+    <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    >
+
+    <!-- Your CSS -->
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+
+<!-- ========================================================= -->
+<!-- TOP BANNER / HEADER                                       -->
+<!-- ========================================================= -->
+
+<header class="top-header">
+
+    <div class="container-fluid h-100">
+
+        <div class="row h-100 align-items-center">
+
+            <!-- STORE BRAND -->
+            <div class="col d-flex align-items-center">
+
+                <!-- Store Icon -->
+                <div class="store-logo">
+                    <i class="bi bi-shop"></i>
+                </div>
+
+                <div class="store-info">
+
+                    <div class="store-name">
+                        Happy Deli Junco
+                    </div>
+
+                    <div class="store-categories">
+
+                        <span>Fresh Food</span>
+                        <span class="category-dot">•</span>
+
+                        <span>Snacks</span>
+                        <span class="category-dot">•</span>
+
+                        <span>Drinks</span>
+                        <span class="category-dot">•</span>
+
+                        <span>More</span>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- DATE / TIME -->
+            <div class="col-auto">
+
+                <div class="header-date-time">
+
+                    <div id="current-date">
+                        Apr 26, 2025
+                    </div>
+
+                    <div id="current-time">
+                        2:34 PM
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- VERTICAL DIVIDER -->
+            <div class="header-divider"></div>
+
+
+            <!-- USER -->
+            <!-- USER -->
+            <div class="col-auto">
+
+                <div class="header-user dropdown">
+
+                    <i class="bi bi-person-fill header-user-icon"></i>
+
+                    <span class="user-name">
+                        {{ current_user.name if current_user is defined else 'Administrator' }}
+                    </span>
+
+                    <!-- Chevron (dropdown toggle) -->
+                    <button class="user-chevron-btn"
+                            type="button"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
+                            aria-label="Account menu">
+                        <i class="bi bi-chevron-down user-chevron"></i>
+                    </button>
+
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#">Profile Settings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form method="POST" action="{{ url_for('logout') }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="dropdown-item text-danger">Logout</button>
+                            </form>
+                        </li>
+                    </ul>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</header>
+
+
+<!-- ========================================================= -->
+<!-- PAGE LAYOUT                                               -->
+<!-- ========================================================= -->
+
+<div class="page-wrapper">
+
+
+    <!-- ===================================================== -->
+    <!-- LEFT SIDEBAR                                          -->
+    <!-- ===================================================== -->
+
+    <aside class="sidebar">
+
+        <nav class="sidebar-nav">
+
+
+            <!-- DASHBOARD -->
+            <a
+                href="{{ url_for('admin_dashboard') }}"
+                class="sidebar-link
+                {% if request.endpoint == 'admin_dashboard' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-house-fill sidebar-icon"></i>
+
+                <span>Admin Dashboard</span>
+
+            </a>
+
+
+            <!-- POS / CHECKOUT -->
+            <a
+                href="{{ url_for('pos') }}"
+                class="sidebar-link
+                {% if request.endpoint == 'pos' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-box-fill sidebar-icon"></i>
+
+                <span>POS / Checkout</span>
+
+            </a>
+
+
+            <!-- INVENTORY -->
+            <a
+                href="{{ url_for('inventory') }}"
+                class="sidebar-link
+                {% if request.endpoint == 'inventory' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-box-seam-fill sidebar-icon"></i>
+
+                <span>Inventory</span>
+
+            </a>
+
+            <!-- SALES HISTORY -->
+            <a
+                href="#"
+                class="sidebar-link
+                {% if request.endpoint == 'sales_history' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-bar-chart-fill sidebar-icon"></i>
+
+                <span>Sales History</span>
+
+            </a>
+
+            <!-- Reports / Analytics -->
+            <a
+                href="#"
+                class="sidebar-link
+                {% if request.endpoint == 'analytics' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-graph-up-arrow sidebar-icon"></i>
+
+                <span>Analytics</span>
+
+            </a>            
+
+            <!-- REORDER RECOMMENDATION -->
+            <a
+                href="#"
+                class="sidebar-link
+                {% if request.endpoint == 'reorder_recommnedation' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-arrow-repeat sidebar-icon"></i>
+
+                <span>Reorder Recommnedations</span>
+
+            </a>            
+            <!-- Suppliers -->
+            <a
+                href="#"
+                class="sidebar-link
+                {% if request.endpoint == 'suppliers' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-truck sidebar-icon"></i>
+
+                <span>Suppliers</span>
+
+            </a>
+            
+            <!-- Receipts / OCR -->
+            <a
+                href="#"
+                class="sidebar-link
+                {% if request.endpoint == 'receipt' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-receipt sidebar-icon"></i>
+
+                <span>Receipts</span>
+
+            </a>
+            
+            <!-- EMPLOYEES -->
+            <a
+                href="#"
+                class="sidebar-link
+                {% if request.endpoint == 'employees' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-people-fill sidebar-icon"></i>
+
+                <span>Employees</span>
+
+            </a>
+            
+            <!-- reports -->
+            <a
+                href="#"
+                class="sidebar-link
+                {% if request.endpoint == 'reports' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-file-earmark-text-fill sidebar-icon"></i>
+
+                <span>Reports</span>
+
+            </a>
+            
+            <!-- Settings -->
+            <a
+                href="#"
+                class="sidebar-link
+                {% if request.endpoint == 'settings' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-gear-fill sidebar-icon"></i>
+
+                <span>Settings</span>
+
+            </a>             
+        </nav>
+        
+    </aside>
+
+
+    <!-- ===================================================== -->
+    <!-- MAIN CONTENT                                          -->
+    <!-- ===================================================== -->
+
+    <main class="main-content">
+
+        {% block content %}
+        {% endblock %}
+
+    </main>
+
+</div>
+
+
+<!-- Bootstrap JavaScript -->
+<script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
+</script>
+
+
+<!-- Current date/time -->
+<script>
+
+    function updateDateTime() {
+
+        const now = new Date();
+
+        const dateOptions = {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        };
+
+        const timeOptions = {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true
+        };
+
+        document.getElementById("current-date").textContent =
+            now.toLocaleDateString('en-US', dateOptions);
+
+        document.getElementById("current-time").textContent =
+            now.toLocaleTimeString('en-US', timeOptions);
+    }
+
+    updateDateTime();
+
+    setInterval(updateDateTime, 1000);
+
+</script>
+
+
+{% block extra_js %}
+{% endblock %}
+
+</body>
+</html>

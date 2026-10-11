@@ -56,6 +56,30 @@ class Sale(db.Model):
         default=db.func.now()
     )
 
+PRODUCT_SEED = [
+    ("012345678901", "Whole Milk 1 Gal", 3.99, 40),
+    ("012345678902", "Large Eggs 12ct", 4.29, 55),
+    ("012345678903", "White Bread Loaf", 2.49, 35),
+    ("012345678904", "Butter Unsalted 1 lb", 4.99, 30),
+    ("012345678905", "Cheddar Cheese 8 oz", 3.79, 28),
+    ("012345678906", "Bananas 1 lb", 0.69, 120),
+    ("012345678907", "Gala Apples 1 lb", 1.99, 80),
+    ("012345678908", "Chicken Breast 1 lb", 5.49, 25),
+    ("012345678909", "Ground Beef 1 lb", 6.99, 22),
+    ("012345678910", "Spaghetti Pasta 16 oz", 1.89, 60),
+    ("012345678911", "Marinara Sauce 24 oz", 3.29, 45),
+    ("012345678912", "Long Grain Rice 2 lb", 2.99, 50),
+    ("012345678913", "Orange Juice 52 oz", 4.49, 33),
+    ("012345678914", "Bottled Water 24pk", 5.99, 38),
+    ("012345678915", "Cola 12pk Cans", 7.49, 42),
+    ("012345678916", "Potato Chips 8 oz", 3.49, 65),
+    ("012345678917", "Chocolate Bar", 1.49, 100),
+    ("012345678918", "Ground Coffee 12 oz", 8.99, 27),
+    ("012345678919", "Paper Towels 6 Roll", 9.99, 20),
+    ("012345678920", "Dish Soap 20 oz", 3.99, 36),
+]
+
+
 def login_required(role=None):
     def decorate(view):
         @wraps(view)
@@ -111,6 +135,11 @@ def logout():
     session.clear()
     return redirect(url_for('home'))
 
+'''@app.route('/logout')
+def logout():
+    session.pop('user_id', None)
+    flash('You have been logged out.', 'info')
+    return redirect(url_for('dashboard'))'''
 
 @app.route('/admin-dashboard')
 @login_required('admin')
@@ -212,6 +241,19 @@ def delete_product(product_id):
     db.session.commit()
 
     return redirect(url_for('inventory'))
+
+@app.cli.command('seed-products')
+def seed_products():
+    """Insert sample products if the table is empty."""
+    if db.session.scalar(db.select(db.func.count(Product.id))) > 0:
+        click.echo('Products already exist, skipping.')
+        return
+    db.session.add_all(
+        Product(barcode=b, name=n, price=p, quantity=q)
+        for b, n, p, q in PRODUCT_SEED
+    )
+    db.session.commit()
+    click.echo(f'Seeded {len(PRODUCT_SEED)} products.')
 
 @app.cli.command('init-db')
 def init_db():

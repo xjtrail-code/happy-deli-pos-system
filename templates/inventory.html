@@ -1,18 +1,14 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Happy Deli - Inventory</title>
-</head>
+{% extends "base.html" %}
 
-<body>
+{% block title %}Happy Deli - Inventory{% endblock %}
 
+{% block content %}
     <h1>Inventory</h1>
 
     <a href="{{ url_for('product_entry') }}">Add Product</a>
     <br><br>
 
     <table border="1" cellpadding="10">
-
         <tr>
             <th>Product</th>
             <th>Barcode</th>
@@ -25,34 +21,21 @@
             <td>{{ product.name }}</td>
             <td>{{ product.barcode }}</td>
             <td>${{ "%.2f"|format(product.price) }}</td>
-
             <td>
                 {{ product.quantity }}
 
-                <form
-                    method="POST"
-                    action="{{ url_for('delete_product', product_id=product.id) }}"
-                    style="display: inline;"
-                >
-                    <input
-                        type="hidden"
-                        name="csrf_token"
-                        value="{{ csrf_token() }}"
-                    >
-
-                    <button type="submit" class="delete-button">
-                        Delete
-                    </button>
+                <form method="POST"
+                      action="{{ url_for('delete_product', product_id=product.id) }}"
+                      style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="delete-button">Delete</button>
                 </form>
             </td>
         </tr>
         {% endfor %}
-
     </table>
 
     <br>
 
     <a href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a>
-
-</body>
-</html>
+{% endblock %}
