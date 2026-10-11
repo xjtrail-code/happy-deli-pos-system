@@ -1,724 +1,245 @@
+{% extends "base.html" %}
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+{% block title %}Happy Deli POS{% endblock %}
+
+{% block content %}
+    <h2>Checkout</h2>
+
+    <!-- PRODUCT SEARCH -->
+    <h3>Add Product</h3>
+
+    <label for="productSearch">Barcode or Product Name:</label>
+    <input type="text" id="productSearch" placeholder="Scan barcode or enter product name" autofocus>
+    <button type="button" id="addItemButton">Add Item</button>
+
+    <hr>
+
+    <!-- CURRENT TRANSACTION -->
+    <h3>Current Transaction</h3>
+
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Total</th>
+            </tr>
+        </thead>
+        <tbody id="cart"></tbody>
+    </table>
+
+    <hr>
+
+    <!-- TRANSACTION TOTAL -->
+    <h3>Transaction Total</h3>
+
+    <p>Subtotal: $<span id="subtotal">0.00</span></p>
+    <p>Tax: $<span id="tax">0.00</span></p>
+    <h3>Total: $<span id="total">0.00</span></h3>
 
     <title>Happy Deli - POS Checkout</title>
 
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/styles.css') }}">
-</head>
+    <!-- PAYMENT -->
+    <h3>Payment</h3>
 
-<body class="pos-page">
+    <button type="button" id="cashButton">Cash</button>
+    <button type="button" id="cardButton">Card</button>
 
-    <div class="pos-container">
+    <p>Payment Method: <strong><span id="paymentMethod">None Selected</span></strong></p>
 
-        <!-- HEADER -->
-        <header class="pos-header">
-            <div>
-                <h1>POS / Checkout</h1>
-                <p>Happy Deli · Register</p>
-            </div>
-
-            <div class="pos-header-actions">
-                {% if g.user.role == 'admin' %}
-                    <a href="{{ url_for('admin_dashboard') }}"
-                       class="pos-back-button">
-                        Back to Dashboard
-                    </a>
-                {% endif %}
-            </div>
-        </header>
-
-        <!-- MAIN CHECKOUT LAYOUT -->
-        <main class="pos-layout">
-
-            <!-- LEFT: ADD PRODUCTS -->
-            <section class="pos-panel pos-product-panel">
-
-                <h2>Add Products</h2>
-                <p class="pos-description">
-                    Scan a barcode or enter a product name.
-                </p>
-
-                <label for="productSearch">
-                    Barcode or Product Name
-                </label>
-
-                <input
-                    type="text"
-                    id="productSearch"
-                    placeholder="Scan barcode or search product"
-                    autocomplete="off"
-                    autofocus
-                >
-
-                <label for="productQuantity">
-                    Quantity
-                </label>
-
-                <input
-                    type="number"
-                    id="productQuantity"
-                    min="1"
-                    step="1"
-                    value="1"
-                    inputmode="numeric"
-                >
-
-                <button
-                    type="button"
-                    id="addItemButton"
-                    class="pos-primary-button"
-                >
-                    Add Item
-                </button>
-
-                <p id="productMessage"
-                   class="pos-message"
-                   role="status"
-                   aria-live="polite"></p>
-
-                <div class="pos-product-help">
-                    <h3>Product Lookup</h3>
-                    <p>
-                        Scan a barcode to add an existing product
-                        to the transaction. You can also search
-                        using a product name if supported by
-                        the product lookup.
-                    </p>
-                </div>
-
-            </section>
-
-            <!-- RIGHT: CURRENT SALE -->
-            <section class="pos-panel pos-sale-panel">
-
-                <div class="pos-panel-heading">
-                    <h2>Current Sale</h2>
-                    <span class="pos-cart-count" id="cartCount">
-                        0 items
-                    </span>
-                </div>
-
-                <div class="pos-table-wrapper">
-                    <table class="pos-cart-table">
-                        <thead>
-                            <tr>
-                                <th>Product</th>
-                                <th>Qty</th>
-                                <th>Price</th>
-                                <th>Total</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-
-                        <tbody id="cart">
-                            <!-- JavaScript adds items here -->
-                        </tbody>
-                    </table>
-                </div>
-
-                <div id="emptyCart" class="pos-empty-cart">
-                    <p>No items added yet.</p>
-                    <span>
-                        Scan a product to start a transaction.
-                    </span>
-                </div>
-
-                <!-- TOTALS -->
-                <div class="pos-totals">
-                    <div class="pos-total-row">
-                        <span>Subtotal</span>
-                        <span>
-                            $<span id="subtotal">0.00</span>
-                        </span>
-                    </div>
-
-                    <div class="pos-total-row">
-                        <span>Tax (6.35%)</span>
-                        <span>
-                            $<span id="tax">0.00</span>
-                        </span>
-                    </div>
-
-                    <div class="pos-total-row pos-grand-total">
-                        <strong>Total</strong>
-                        <strong>
-                            $<span id="total">0.00</span>
-                        </strong>
-                    </div>
-                </div>
-
-                <!-- PAYMENT -->
-                <div class="pos-payment">
-                    <h3>Payment Method</h3>
-
-                    <div class="pos-payment-buttons">
-                        <button
-                            type="button"
-                            id="cashButton"
-                            class="pos-payment-button"
-                        >
-                            Cash
-                        </button>
-
-                        <button
-                            type="button"
-                            id="cardButton"
-                            class="pos-payment-button"
-                        >
-                            Card
-                        </button>
-                    </div>
-
-                    <p class="pos-selected-payment">
-                        Selected:
-                        <strong id="paymentMethod">
-                            None Selected
-                        </strong>
-                    </p>
-
-                    <!-- CASH ONLY -->
-                    <div id="cashSection"
-                         class="pos-cash-section"
-                         style="display: none;">
-
-                        <label for="cashReceived">
-                            Cash Received ($)
-                        </label>
-
-                        <input
-                            type="number"
-                            id="cashReceived"
-                            min="0"
-                            step="0.01"
-                            placeholder="0.00"
-                        >
-
-                        <div class="pos-change-row">
-                            <span>Change Due</span>
-                            <strong>
-                                $<span id="changeDue">0.00</span>
-                            </strong>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- CHECKOUT ACTIONS -->
-                <div class="pos-checkout-actions">
-                    <button
-                        type="button"
-                        id="completeSaleButton"
-                        class="pos-primary-button"
-                    >
-                        Complete Sale
-                    </button>
-
-                    <button
-                        type="button"
-                        id="voidTransactionButton"
-                        class="pos-void-button"
-                    >
-                        Void Transaction
-                    </button>
-                </div>
-
-            </section>
-
-        </main>
-
-        <footer class="pos-footer">
-            {% include '_logout.html' %}
-        </footer>
-
+    <!-- CASH PAYMENT -->
+    <div id="cashSection" style="display: none;">
+        <label for="cashReceived">Cash Received:</label>
+        <input type="number" id="cashReceived" min="0" step="0.01" placeholder="0.00">
+        <p>Change Due: $<span id="changeDue">0.00</span></p>
     </div>
 
-    <!-- JAVASCRIPT -->
-    <script>
-        let cart = [];
-        let paymentMethod = null;
-        const taxRate = 0.0635;
+    <br>
 
-        const searchInput =
-            document.getElementById("productSearch");
+    <button type="button" id="completeSaleButton">Complete Sale</button>
+    <button type="button" id="voidTransactionButton">Void Transaction</button>
 
         const quantityInput =
             document.getElementById("productQuantity");
 
-        const productMessage =
-            document.getElementById("productMessage");
+    {% if g.user.role == 'admin' %}
+        <a href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a>
+    {% endif %}
 
-        const cashButton =
-            document.getElementById("cashButton");
+    {% include '_logout.html' %}
+{% endblock %}
 
-        const cardButton =
-            document.getElementById("cardButton");
+{% block extra_js %}
+<script>
 
-        const cashSection =
-            document.getElementById("cashSection");
+    let cart = [];
+    let paymentMethod = null;
 
-        const cashReceivedInput =
-            document.getElementById("cashReceived");
+    // Connecticut sales tax
+    const taxRate = 0.0635;
 
-        const completeSaleButton =
-            document.getElementById("completeSaleButton");
+    const $ = id => document.getElementById(id);
 
-        function showMessage(message, isError = false) {
-            productMessage.textContent = message;
-            productMessage.classList.toggle(
-                "error",
-                isError
-            );
+    function displayCart() {
+        const cartTable = $("cart");
+        cartTable.innerHTML = "";
+
+        for (let item of cart) {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td>${item.name}</td>
+                <td>${item.quantity}</td>
+                <td>$${item.price.toFixed(2)}</td>
+                <td>$${(item.price * item.quantity).toFixed(2)}</td>
+            `;
+            cartTable.appendChild(row);
+        }
+    }
+
+    function calculateTotals() {
+        let subtotal = 0;
+        for (let item of cart) {
+            subtotal += item.price * item.quantity;
         }
 
-        function displayCart() {
-            const cartTable =
-                document.getElementById("cart");
+        const tax = subtotal * taxRate;
+        const total = subtotal + tax;
 
-            const emptyCart =
-                document.getElementById("emptyCart");
+        $("subtotal").textContent = subtotal.toFixed(2);
+        $("tax").textContent = tax.toFixed(2);
+        $("total").textContent = total.toFixed(2);
 
-            const cartCount =
-                document.getElementById("cartCount");
-
-            cartTable.innerHTML = "";
-
-            let itemCount = 0;
-
-            cart.forEach((item, index) => {
-                itemCount += item.quantity;
-
-                const row = document.createElement("tr");
-
-                // Use textContent for product names
-                // instead of inserting HTML from the server.
-                const values = [
-                    item.name,
-                    item.quantity,
-                    "$" + item.price.toFixed(2),
-                    "$" + (
-                        item.price * item.quantity
-                    ).toFixed(2)
-                ];
-
-                values.forEach(value => {
-                    const cell =
-                        document.createElement("td");
-
-                    cell.textContent = value;
-                    row.appendChild(cell);
-                });
-
-                const actionCell =
-                    document.createElement("td");
-
-                const removeButton =
-                    document.createElement("button");
-
-                removeButton.type = "button";
-                removeButton.textContent = "Remove";
-                removeButton.className =
-                    "pos-remove-button";
-
-                removeButton.addEventListener(
-                    "click",
-                    function () {
-                        cart.splice(index, 1);
-                        displayCart();
-                        calculateTotals();
-                    }
-                );
-
-                actionCell.appendChild(removeButton);
-                row.appendChild(actionCell);
-                cartTable.appendChild(row);
-            });
-
-            cartCount.textContent =
-                itemCount + (
-                    itemCount === 1
-                        ? " item"
-                        : " items"
-                );
-
-            emptyCart.style.display =
-                cart.length === 0
-                    ? "block"
-                    : "none";
+        if (paymentMethod === "Cash") {
+            calculateChange();
         }
+    }
 
-        function calculateTotals() {
-            let subtotal = 0;
+    function calculateChange() {
+        const cashReceived = Number($("cashReceived").value);
+        const total = Number($("total").textContent);
 
-            for (const item of cart) {
-                subtotal +=
-                    item.price * item.quantity;
-            }
+        let change = cashReceived - total;
+        if (change < 0) change = 0;
 
-            const tax = subtotal * taxRate;
-            const total = subtotal + tax;
+        $("changeDue").textContent = change.toFixed(2);
+    }
 
-            document.getElementById(
-                "subtotal"
-            ).textContent = subtotal.toFixed(2);
+    function resetTransaction() {
+        cart = [];
+        paymentMethod = null;
 
-            document.getElementById(
-                "tax"
-            ).textContent = tax.toFixed(2);
+        displayCart();
+        calculateTotals();
 
-            document.getElementById(
-                "total"
-            ).textContent = total.toFixed(2);
+        $("paymentMethod").textContent = "None Selected";
+        $("cashSection").style.display = "none";
+        $("cashReceived").value = "";
+        $("changeDue").textContent = "0.00";
+        $("productSearch").focus();
+    }
 
-            if (paymentMethod === "Cash") {
-                calculateChange();
-            }
-        }
+    // ADD ITEM
+    $("addItemButton").addEventListener("click", function () {
 
-        function addItem() {
-            const search = searchInput.value.trim();
-            const quantity = Number(
-                quantityInput.value
-            );
+        const search = $("productSearch").value.trim();
+        if (!search) return;
 
-            if (!search) {
-                showMessage(
-                    "Please scan or enter a product.",
-                    true
-                );
-                searchInput.focus();
-                return;
-            }
-
-            if (
-                !Number.isSafeInteger(quantity) ||
-                quantity < 1
-            ) {
-                showMessage(
-                    "Enter a valid whole-number quantity.",
-                    true
-                );
-                quantityInput.focus();
-                return;
-            }
-
-            showMessage("Looking up product...");
-
-            fetch(
-                "/product-lookup/" +
-                encodeURIComponent(search)
-            )
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(
-                        "Product lookup failed."
-                    );
-                }
-
-                return response.json();
-            })
+        fetch("/product-lookup/" + encodeURIComponent(search))
+            .then(response => response.json())
             .then(product => {
+
                 if (!product.found) {
-                    showMessage(
-                        "Product not found.",
-                        true
-                    );
+                    alert("Product not found.");
                     return;
                 }
 
-                const price = Number(product.price);
-
-                if (
-                    !Number.isFinite(price) ||
-                    price < 0
-                ) {
-                    showMessage(
-                        "This product has an invalid price.",
-                        true
-                    );
-                    return;
-                }
-
-                const barcode =
-                    product.barcode || search;
-
-                const existingItem = cart.find(
-                    item => item.barcode === barcode
-                );
+                const existingItem = cart.find(item => item.barcode === search);
 
                 if (existingItem) {
-                    existingItem.quantity += quantity;
+                    existingItem.quantity += 1;
                 } else {
                     cart.push({
-                        barcode: barcode,
+                        barcode: search,
                         name: product.name,
-                        price: price,
-                        quantity: quantity
+                        price: Number(product.price),
+                        quantity: 1
                     });
                 }
 
                 displayCart();
                 calculateTotals();
 
-                showMessage(
-                    product.name + " added to sale."
-                );
-
-                searchInput.value = "";
-                quantityInput.value = "1";
-                searchInput.focus();
+                $("productSearch").value = "";
+                $("productSearch").focus();
             })
             .catch(error => {
                 console.error(error);
-
-                showMessage(
-                    "Unable to look up product.",
-                    true
-                );
+                alert("Unable to add product.");
             });
+    });
+
+    // CASH PAYMENT
+    $("cashButton").addEventListener("click", function () {
+        paymentMethod = "Cash";
+        $("paymentMethod").textContent = "Cash";
+        $("cashSection").style.display = "block";
+        $("cashReceived").focus();
+    });
+
+    // CARD PAYMENT
+    $("cardButton").addEventListener("click", function () {
+        paymentMethod = "Card";
+        $("paymentMethod").textContent = "Card";
+        $("cashSection").style.display = "none";
+        $("cashReceived").value = "";
+        $("changeDue").textContent = "0.00";
+    });
+
+    $("cashReceived").addEventListener("input", calculateChange);
+
+    // COMPLETE SALE
+    $("completeSaleButton").addEventListener("click", function () {
+
+        if (cart.length === 0) return;
+
+        if (paymentMethod === null) {
+            alert("Please select Cash or Card.");
+            return;
         }
 
-        document.getElementById(
-            "addItemButton"
-        ).addEventListener("click", addItem);
+        const formData = new FormData();
+        formData.append("csrf_token", "{{ csrf_token() }}");
+        formData.append("cart", JSON.stringify(cart));
+        formData.append("total", $("total").textContent);
+        formData.append("payment_method", paymentMethod);
 
-        searchInput.addEventListener(
-            "keydown",
-            function (event) {
-                if (event.key === "Enter") {
-                    event.preventDefault();
-                    addItem();
-                }
-            }
-        );
-
-        function selectPayment(method) {
-            paymentMethod = method;
-
-            document.getElementById(
-                "paymentMethod"
-            ).textContent = method;
-
-            cashButton.classList.toggle(
-                "selected",
-                method === "Cash"
-            );
-
-            cardButton.classList.toggle(
-                "selected",
-                method === "Card"
-            );
-
-            cashSection.style.display =
-                method === "Cash"
-                    ? "block"
-                    : "none";
-
-            if (method === "Cash") {
-                cashReceivedInput.focus();
-                calculateChange();
-            } else {
-                cashReceivedInput.value = "";
-
-                document.getElementById(
-                    "changeDue"
-                ).textContent = "0.00";
-            }
-        }
-
-        cashButton.addEventListener(
-            "click",
-            function () {
-                selectPayment("Cash");
-            }
-        );
-
-        cardButton.addEventListener(
-            "click",
-            function () {
-                selectPayment("Card");
-            }
-        );
-
-        function calculateChange() {
-            const cashReceived =
-                Number(cashReceivedInput.value);
-
-            const total = Number(
-                document.getElementById(
-                    "total"
-                ).textContent
-            );
-
-            const change = Math.max(
-                0,
-                cashReceived - total
-            );
-
-            document.getElementById(
-                "changeDue"
-            ).textContent = change.toFixed(2);
-        }
-
-        cashReceivedInput.addEventListener(
-            "input",
-            calculateChange
-        );
-
-        function resetTransaction() {
-            cart = [];
-            paymentMethod = null;
-
-            displayCart();
-            calculateTotals();
-
-            document.getElementById(
-                "paymentMethod"
-            ).textContent = "None Selected";
-
-            cashButton.classList.remove("selected");
-            cardButton.classList.remove("selected");
-
-            cashSection.style.display = "none";
-            cashReceivedInput.value = "";
-
-            document.getElementById(
-                "changeDue"
-            ).textContent = "0.00";
-
-            searchInput.value = "";
-            quantityInput.value = "1";
-
-            showMessage("");
-            searchInput.focus();
-        }
-
-        completeSaleButton.addEventListener(
-            "click",
-            function () {
-                if (cart.length === 0) {
-                    alert(
-                        "Add at least one product first."
-                    );
-                    return;
-                }
-
-                if (paymentMethod === null) {
-                    alert(
-                        "Please select Cash or Card."
-                    );
-                    return;
-                }
-
-                if (paymentMethod === "Cash") {
-                    const cashReceived = Number(
-                        cashReceivedInput.value
-                    );
-
-                    const total = Number(
-                        document.getElementById(
-                            "total"
-                        ).textContent
-                    );
-
-                    if (
-                        cashReceivedInput.value.trim()
-                            === "" ||
-                        !Number.isFinite(cashReceived) ||
-                        cashReceived < total
-                    ) {
-                        alert(
-                            "Insufficient cash received."
-                        );
-                        return;
-                    }
-                }
-
-                const formData = new FormData();
-
-                formData.append(
-                    "csrf_token",
-                    "{{ csrf_token() }}"
-                );
-
-                formData.append(
-                    "cart",
-                    JSON.stringify(cart)
-                );
-
-                formData.append(
-                    "total",
-                    document.getElementById(
-                        "total"
-                    ).textContent
-                );
-
-                formData.append(
-                    "payment_method",
-                    paymentMethod
-                );
-
-                completeSaleButton.disabled = true;
-                completeSaleButton.textContent =
-                    "Processing Sale...";
-
-                fetch("/complete-sale", {
-                    method: "POST",
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert("Sale completed!");
-                        resetTransaction();
-                    } else {
-                        alert(
-                            data.error ||
-                            "Unable to complete sale."
-                        );
-                    }
-                })
-                .catch(error => {
-                    console.error(error);
-
-                    alert(
-                        "Unable to complete sale. " +
-                        "Please try again."
-                    );
-                })
-                .finally(() => {
-                    completeSaleButton.disabled = false;
-                    completeSaleButton.textContent =
-                        "Complete Sale";
-                });
-            }
-        );
-
-        document.getElementById(
-            "voidTransactionButton"
-        ).addEventListener(
-            "click",
-            function () {
-                if (cart.length === 0) {
-                    return;
-                }
-
-                if (
-                    confirm(
-                        "Void the current transaction?"
-                    )
-                ) {
+        fetch("/complete-sale", { method: "POST", body: formData })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Sale completed!");
                     resetTransaction();
+                } else {
+                    alert("Unable to complete sale.");
                 }
-            }
-        );
+            })
+            .catch(error => {
+                console.error(error);
+                alert("Unable to complete sale.");
+            });
+    });
 
-        displayCart();
-        calculateTotals();
-    </script>
+    // VOID TRANSACTION
+    $("voidTransactionButton").addEventListener("click", resetTransaction);
 
-</body>
-</html>
+    // ENTER KEY = ADD ITEM
+    $("productSearch").addEventListener("keydown", function (event) {
+        if (event.key === "Enter") {
+            event.preventDefault();
+            $("addItemButton").click();
+        }
+    });
+
+</script>
+{% endblock %}
