@@ -33,70 +33,46 @@
 <!-- TOP BANNER / HEADER                                       -->
 <!-- ========================================================= -->
 
+
+<!-- TOP HEADER -->
 <header class="top-header">
 
     <div class="container-fluid h-100">
 
-        <div class="row h-100 align-items-center">
+        <div class="row h-100 align-items-center flex-nowrap">
 
             <!-- STORE BRAND -->
             <div class="col d-flex align-items-center">
 
-                <!-- Store Icon -->
                 <div class="store-logo">
                     <i class="bi bi-shop"></i>
                 </div>
 
                 <div class="store-info">
-
                     <div class="store-name">
                         Happy Deli Junco
                     </div>
-
-                    <div class="store-categories">
-
-                        <span>Fresh Food</span>
-                        <span class="category-dot">•</span>
-
-                        <span>Snacks</span>
-                        <span class="category-dot">•</span>
-
-                        <span>Drinks</span>
-                        <span class="category-dot">•</span>
-
-                        <span>More</span>
-
-                    </div>
-
                 </div>
 
             </div>
 
-
-            <!-- DATE / TIME -->
+            <!-- DATE AND TIME -->
             <div class="col-auto">
 
-                <div class="header-date-time">
+                <div class="header-date-time d-flex align-items-center gap-3 text-nowrap">
 
-                    <div id="current-date">
-                        Apr 26, 2025
-                    </div>
+                    <span id="current-date"></span>
 
-                    <div id="current-time">
-                        2:34 PM
-                    </div>
+                    <span id="current-time"></span>
 
                 </div>
 
             </div>
-
 
             <!-- VERTICAL DIVIDER -->
             <div class="header-divider"></div>
 
-
-            <!-- USER -->
-            <!-- USER -->
+            <!-- ADMINISTRATOR -->
             <div class="col-auto">
 
                 <div class="header-user dropdown">
@@ -107,24 +83,47 @@
                         {{ current_user.name if current_user is defined else 'Administrator' }}
                     </span>
 
-                    <!-- Chevron (dropdown toggle) -->
-                    <button class="user-chevron-btn"
-                            type="button"
-                            data-bs-toggle="dropdown"
-                            aria-expanded="false"
-                            aria-label="Account menu">
+                    <button
+                        class="user-chevron-btn"
+                        type="button"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                        aria-label="Account menu"
+                    >
                         <i class="bi bi-chevron-down user-chevron"></i>
                     </button>
 
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="#">Profile Settings</a></li>
-                        <li><hr class="dropdown-divider"></li>
+
+                        <li>
+                            <a class="dropdown-item" href="#">
+                                Profile Settings
+                            </a>
+                        </li>
+
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+
                         <li>
                             <form method="POST" action="{{ url_for('logout') }}">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="dropdown-item text-danger">Logout</button>
+
+                                <input
+                                    type="hidden"
+                                    name="csrf_token"
+                                    value="{{ csrf_token() }}"
+                                >
+
+                                <button
+                                    type="submit"
+                                    class="dropdown-item text-danger"
+                                >
+                                    Logout
+                                </button>
+
                             </form>
                         </li>
+
                     </ul>
 
                 </div>
@@ -136,6 +135,7 @@
     </div>
 
 </header>
+
 
 
 <!-- ========================================================= -->
@@ -179,7 +179,7 @@
                 {% endif %}"
             >
 
-                <i class="bi bi-box-fill sidebar-icon"></i>
+                <i class="bi bi-calculator-fill sidebar-icon"></i>
 
                 <span>POS / Checkout</span>
 
@@ -214,22 +214,7 @@
 
                 <span>Sales History</span>
 
-            </a>
-
-            <!-- Reports / Analytics -->
-            <a
-                href="#"
-                class="sidebar-link
-                {% if request.endpoint == 'analytics' %}
-                    active
-                {% endif %}"
-            >
-
-                <i class="bi bi-graph-up-arrow sidebar-icon"></i>
-
-                <span>Analytics</span>
-
-            </a>            
+            </a>         
 
             <!-- REORDER RECOMMENDATION -->
             <a
@@ -290,20 +275,20 @@
 
             </a>
             
-            <!-- reports -->
-            <a
-                href="#"
-                class="sidebar-link
-                {% if request.endpoint == 'reports' %}
-                    active
-                {% endif %}"
-            >
+            
 
-                <i class="bi bi-file-earmark-text-fill sidebar-icon"></i>
+<!-- REPORTS / ANALYTICS -->
+<a
+    href="{{ url_for('reports') }}"
+    class="sidebar-link
+    {% if request.endpoint == 'reports' %}
+        active
+    {% endif %}"
+>
+    <i class="bi bi-file-earmark-bar-graph-fill sidebar-icon"></i>
+    <span>Reports / Analytics</span>
+</a>
 
-                <span>Reports</span>
-
-            </a>
             
             <!-- Settings -->
             <a

@@ -965,3 +965,68 @@ body:has(.login-page) {
         margin-right: 0;
     }
 }
+
+/* =========================================
+   HEADER ALIGNMENT FIX
+   ========================================= */
+
+.top-header .row {
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+.top-header .row > .col {
+    min-width: 0;
+}
+
+.store-name {
+    white-space: nowrap;
+}
+
+.header-date-time {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    white-space: nowrap;
+    padding-right: 12px;
+}
+
+.header-user {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+    white-space: nowrap;
+    padding-right: 12px;
+}
+
+.header-divider {
+    flex-shrink: 0;
+    margin-right: 12px;
+}
+
+/* Tablet adjustments */
+@media (max-width: 992px) {
+    .header-date-time {
+        display: none;
+    }
+
+    .header-divider {
+        display: none;
+    }
+}
+
+/* Small screens */
+@media (max-width: 768px) {
+    .store-name {
+        white-space: normal;
+    }
+
+    .header-user {
+        gap: 6px;
+        padding-right: 5px;
+    }
+}
+
+

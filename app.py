@@ -1,6 +1,6 @@
 ﻿import os
 import secrets
-from datetime import timedelta
+from datetime import date, timedelta
 from functools import wraps
 
 import click
@@ -142,25 +142,43 @@ def logout():
     return redirect(url_for('dashboard'))'''
 
 
+
 @app.route('/admin-dashboard')
 @login_required('admin')
 def admin_dashboard():
-    from datetime import datetime, date
+    from datetime import datetime, date, timedelta
 
     # Get today's completed sales
     today = date.today()
 
+    start_of_day = datetime.combine(
+        today, datetime.min.time()
+    )
+    end_of_day = start_of_day + timedelta(days=1)
+
+    # TEMPORARY DEBUGGING
+    print("Dashboard date:", today)
+
+    all_sales = db.session.scalars(
+        db.select(Sale)
+    ).all()
+
+    print("All sales:", [
+        (sale.id, sale.created_at, sale.total)
+        for sale in all_sales
+    ])
+
+    # Retrieve today's sales
     sales = db.session.scalars(
         db.select(Sale)
-        .where(Sale.created_at >= datetime.combine(today, datetime.min.time()))
-        .where(Sale.created_at < datetime.combine(
-            date.fromordinal(today.toordinal() + 1),
-            datetime.min.time()
-        ))
+        .where(Sale.created_at >= start_of_day)
+        .where(Sale.created_at < end_of_day)
     ).all()
 
     # Calculate today's totals
-    todays_sales = round(sum(sale.total for sale in sales), 2)
+    todays_sales = round(
+        sum(sale.total for sale in sales), 2
+    )
     todays_transactions = len(sales)
 
     # Count products running low (5 or fewer)
@@ -169,6 +187,7 @@ def admin_dashboard():
         .where(Product.quantity <= 5)
     ) or 0
 
+    # Send data to dashboard
     return render_template(
         'admin_dashboard.html',
         todays_sales=todays_sales,
@@ -176,7 +195,6 @@ def admin_dashboard():
         low_stock_alerts=low_stock_alerts,
         profit_margin=None
     )
-
 
 
 @app.route('/pos')
