@@ -1,34 +1,232 @@
+
 {% extends "base.html" %}
 
-{% block title %}Happy Deli POS - Admin Dashboard{% endblock %}
+{% block title %}Admin Dashboard | Happy Deli Junco{% endblock %}
 
 {% block content %}
-    <h2>Admin Dashboard</h2>
-    <p>Welcome, {{ g.user.username }}</p>
 
-            <nav class="sidebar-nav" aria-label="Admin navigation">
+<div class="container-fluid py-4">
 
-    <h3>Today's Store Overview</h3>
+    <!-- HEADER -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <div>
+            <h2 class="fw-bold mb-1" style="color:#123a60;">
+                Admin Dashboard
+            </h2>
+            <p class="text-muted mb-0">
+                Welcome, {{ g.user.username }}.
+                Here's your store overview.
+            </p>
+        </div>
+        <span class="badge px-3 py-2"
+              style="background:#123a60;">
+            <i class="bi bi-shop me-1"></i>
+            Store Overview
+        </span>
+    </div>
 
-                <a href="{{ url_for('pos') }}" class="nav-link">
-                    <i data-lucide="shopping-cart"></i>
-                    POS / Checkout
+    <!-- OVERVIEW CARDS -->
+    <div class="row g-3 mb-4">
+
+        <div class="col-12 col-md-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="text-muted">Today's Sales</h6>
+                        <i class="bi bi-currency-dollar fs-3 text-success"></i>
+                    </div>
+                    <h2 class="fw-bold" style="color:#123a60;">
+                        ${{ "%.2f"|format(todays_sales|default(0, true)) }}
+                    </h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="text-muted">Today's Transactions</h6>
+                        <i class="bi bi-receipt fs-3 text-primary"></i>
+                    </div>
+                    <h2 class="fw-bold" style="color:#123a60;">
+                        {{ todays_transactions|default(0, true) }}
+                    </h2>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="text-muted">Low Stock Alerts</h6>
+                        <i class="bi bi-exclamation-triangle-fill fs-3 text-warning"></i>
+                    </div>
+                    <h2 class="fw-bold" style="color:#123a60;">
+                        {{ low_stock_alerts|default(0, true) }}
+                    </h2>
+                    <a href="{{ url_for('inventory') }}"
+                       class="small text-decoration-none">
+                        View Inventory →
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- CHARTS -->
+    <div class="row g-3 mb-4">
+
+        <!-- SALES TREND -->
+        <div class="col-12 col-xl-7">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3" style="color:#123a60;">
+                        <i class="bi bi-bar-chart-fill me-2"></i>
+                        Sales Trend — Last 7 Days
+                    </h5>
+                    <div style="height:300px;">
+                        <canvas id="dashboardSalesChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAYMENT BREAKDOWN -->
+        <div class="col-12 col-xl-5">
+            <div class="card h-100 shadow-sm border-0">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold mb-3" style="color:#123a60;">
+                        <i class="bi bi-pie-chart-fill me-2"></i>
+                        Payment Breakdown
+                    </h5>
+                    <div style="height:300px;">
+                        <canvas id="dashboardPaymentChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- INVENTORY ALERTS -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center gap-2">
+                <div>
+                    <h5 class="fw-bold mb-1" style="color:#123a60;">
+                        <i class="bi bi-box-seam me-2"></i>
+                        Inventory Alerts
+                    </h5>
+                    <p class="text-muted mb-0">
+                        {{ low_stock_alerts|default(0, true) }}
+                        products currently have low stock.
+                    </p>
+                </div>
+                <a href="{{ url_for('inventory') }}"
+                   class="btn btn-outline-primary">
+                    View All
                 </a>
+            </div>
+        </div>
+    </div>
 
-                <a href="{{ url_for('inventory') }}" class="nav-link">
-                    <i data-lucide="package"></i>
-                    Inventory
-                </a>
+    <!-- QUICK ACTIONS -->
+    <h4 class="fw-bold mb-3" style="color:#123a60;">
+        Quick Actions
+    </h4>
 
-    <h3>Management</h3>
+    <div class="row g-3 mb-4">
 
-    <a href="/pos"><button type="button">POS / Checkout</button></a>
-    <a href="/inventory"><button type="button">Inventory</button></a>
-    <a href="{{ url_for('reports') }}"><button type="button">Reports & Analytics</button></a>
-    <a href="/employees"><button type="button">Employee Management</button></a>
-    <a href="/suppliers"><button type="button">Supplier Management</button></a>
+        <div class="col-12 col-md-6 col-xl-4">
+            <a href="{{ url_for('pos') }}"
+               class="btn w-100 py-3 text-white"
+               style="background:#123a60;">
+                <i class="bi bi-calculator-fill me-2"></i>
+                POS / Checkout
+            </a>
+        </div>
 
-        </aside>
+        <div class="col-12 col-md-6 col-xl-4">
+            <a href="{{ url_for('inventory') }}"
+               class="btn btn-primary w-100 py-3">
+                <i class="bi bi-box-seam me-2"></i>
+                Inventory
+            </a>
+        </div>
 
-    {% include '_logout.html' %}
+        <div class="col-12 col-md-6 col-xl-4">
+            <a href="{{ url_for('reports') }}"
+               class="btn btn-primary w-100 py-3">
+                <i class="bi bi-file-earmark-bar-graph me-2"></i>
+                Reports & Analytics
+            </a>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-4">
+            <a href="{{ url_for('employee_management') }}"
+               class="btn btn-outline-primary w-100 py-3">
+                <i class="bi bi-people-fill me-2"></i>
+                Employee Management
+            </a>
+        </div>
+
+        <div class="col-12 col-md-6 col-xl-4">
+            <a href="{{ url_for('supplier_management') }}"
+               class="btn btn-outline-primary w-100 py-3">
+                <i class="bi bi-truck me-2"></i>
+                Supplier Management
+            </a>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- CHART.JS -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+    // Data will be connected to Flask in the next step.
+    const salesLabels = [];
+    const salesValues = [];
+
+    new Chart(document.getElementById('dashboardSalesChart'), {
+        type: 'bar',
+        data: {
+            labels: salesLabels,
+            datasets: [{
+                label: 'Sales ($)',
+                data: salesValues,
+                backgroundColor: '#2586ed',
+                borderRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true }
+            }
+        }
+    });
+
+    new Chart(document.getElementById('dashboardPaymentChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Cash', 'Card'],
+            datasets: [{
+                data: [],
+                backgroundColor: ['#123a60', '#58a6ff']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+</script>
+
 {% endblock %}
