@@ -1,12 +1,15 @@
 ﻿import os
 import secrets
-from datetime import timedelta
+from datetime import date, datetime, timedelta
 from functools import wraps
 
 import click
+from dotenv import load_dotenv
 from flask import Flask, abort, g, redirect, render_template, request, session, url_for
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
+
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 app = Flask(__name__)
 app.config.update(
@@ -55,6 +58,19 @@ class Sale(db.Model):
         nullable=False,
         default=db.func.now()
     )
+    items = db.relationship('SaleItem', back_populates='sale',
+                            cascade='all, delete-orphan', order_by='SaleItem.id')
+
+
+class SaleItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    sale_id = db.Column(db.Integer, db.ForeignKey('sale.id'), nullable=False, index=True)
+    # Preserve the name and price at checkout even if inventory changes later.
+    product_name = db.Column(db.String(100), nullable=False)
+    barcode = db.Column(db.String(100), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    unit_price = db.Column(db.Numeric(12, 2), nullable=False)
+    sale = db.relationship('Sale', back_populates='items')
 
 PRODUCT_SEED = [
     ("012345678901", "Whole Milk 1 Gal", 3.99, 40),
@@ -354,6 +370,7 @@ def complete_sale():
             )
 
         subtotal = Decimal('0.00')
+        sale_items = []
 
         for barcode, quantity in quantities.items():
             product = db.session.scalar(
@@ -378,6 +395,13 @@ def complete_sale():
 
             product.quantity -= quantity
 
+            sale_items.append(SaleItem(
+                product_name=product.name,
+                barcode=product.barcode,
+                quantity=quantity,
+                unit_price=Decimal(str(product.price)),
+            ))
+
             subtotal += (
                 Decimal(str(product.price)) * quantity
             )
@@ -396,7 +420,8 @@ def complete_sale():
 
         sale = Sale(
             total=float(total),
-            payment_method=payment_method
+            payment_method=payment_method,
+            items=sale_items,
         )
 
         db.session.add(sale)
@@ -423,6 +448,26 @@ def complete_sale():
             'success': False,
             'error': 'Unable to complete sale.'
         }, 500
+
+
+@app.route('/sales-history')
+@login_required('admin')
+def sales_history():
+    today = date.today()
+    start = datetime.combine(today, datetime.min.time())
+    daily_total, daily_count = db.session.execute(
+        db.select(db.func.coalesce(db.func.sum(Sale.total), 0), db.func.count(Sale.id))
+        .where(Sale.created_at >= start, Sale.created_at < start + timedelta(days=1))
+    ).one()
+    sales = db.paginate(
+        db.select(Sale).options(db.selectinload(Sale.items))
+        .order_by(Sale.created_at.desc(), Sale.id.desc()),
+        per_page=20,
+        max_per_page=20,
+        error_out=False,
+    )
+    return render_template('sales_history.html', sales=sales, today=today,
+                           daily_total=daily_total, daily_count=daily_count)
 
 
 @app.route('/reports')

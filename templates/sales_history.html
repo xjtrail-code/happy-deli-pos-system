@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Happy Deli - Sales History{% endblock %}
+
+{% block content %}
+<h1>Sales History</h1>
+<p class="text-muted">Completed transactions, newest first. {{ sales.total }} transactions.</p>
+
+<button class="btn btn-primary mb-3" type="button" data-bs-toggle="collapse"
+        data-bs-target="#daily-total" aria-expanded="false" aria-controls="daily-total">
+    <i class="bi bi-calculator" aria-hidden="true"></i> Today's Total
+</button>
+<div class="collapse" id="daily-total">
+    <section class="card card-body shadow-sm mb-3" aria-labelledby="daily-total-heading">
+        <h2 class="h5" id="daily-total-heading">Transaction total for {{ today.strftime('%m/%d/%Y') }}</h2>
+        <p class="fs-3 fw-bold mb-1">${{ '%.2f'|format(daily_total) }}</p>
+        <p class="text-muted mb-0">{{ daily_count }} completed transaction{{ '' if daily_count == 1 else 's' }} &middot; Includes tax</p>
+    </section>
+</div>
+
+{% for sale in sales.items %}
+<article class="card shadow-sm mb-3">
+    <div class="card-header d-flex flex-wrap justify-content-between gap-2">
+        <div>
+            <strong>Transaction #{{ sale.id }}</strong>
+            <div class="small">{{ sale.created_at.strftime('%m/%d/%Y %I:%M %p') }}</div>
+        </div>
+        <div class="text-end">
+            <strong>${{ '%.2f'|format(sale.total) }}</strong>
+            <div class="small">{{ sale.payment_method|capitalize }}</div>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if sale.items %}
+        <div class="table-responsive">
+            <table class="table mb-0 align-middle">
+                <caption class="visually-hidden">Items in transaction #{{ sale.id }}</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Item</th>
+                        <th scope="col" class="text-end">Quantity</th>
+                        <th scope="col" class="text-end">Unit price</th>
+                        <th scope="col" class="text-end">Item total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in sale.items %}
+                    <tr>
+                        <td>{{ item.product_name }}<div class="small text-muted">{{ item.barcode }}</div></td>
+                        <td class="text-end">{{ item.quantity }}</td>
+                        <td class="text-end">${{ '%.2f'|format(item.unit_price) }}</td>
+                        <td class="text-end">${{ '%.2f'|format(item.unit_price * item.quantity) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="small text-muted mt-3 mb-0">Item prices exclude tax. Transaction total includes tax.</p>
+        {% else %}
+        <p class="text-muted mb-0">Item details were not recorded for this transaction.</p>
+        {% endif %}
+    </div>
+</article>
+{% else %}
+<div class="card card-body text-center py-5">
+    <h2 class="h5">No completed transactions yet</h2>
+    <p class="text-muted mb-0">Sales will appear here after checkout.</p>
+</div>
+{% endfor %}
+
+{% if sales.pages > 1 %}
+<nav aria-label="Sales history pages" class="d-flex align-items-center gap-3 my-3">
+    {% if sales.has_prev %}<a class="btn btn-outline-primary" href="{{ url_for('sales_history', page=sales.prev_num) }}">Previous</a>{% endif %}
+    <span>Page {{ sales.page }} of {{ sales.pages }}</span>
+    {% if sales.has_next %}<a class="btn btn-outline-primary" href="{{ url_for('sales_history', page=sales.next_num) }}">Next</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

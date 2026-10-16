@@ -18,15 +18,23 @@ Admins can access the dashboard, POS, and product entry. Cashiers can access POS
 Logout uses a POST form. Sessions expire after eight hours and forms require a CSRF token.
 Password recovery and login rate limiting are not implemented yet.
 
-Local development uses `instance/auth.sqlite3` and a generated persistent secret in
-`instance/secret_key`. Both are excluded from Git. Flask does not automatically load
-`.env` with the current dependencies; configure variables in the shell.
+Without `DATABASE_URL`, local development uses `instance/auth.sqlite3`. A generated
+persistent secret is stored in `instance/secret_key` when `SECRET_KEY` is unset.
+Both files are excluded from Git. The app loads the project `.env` file for both
+`python app.py` and `flask` commands; existing shell variables take precedence.
 
-For PostgreSQL, set the database URL before initializing the database:
+For PostgreSQL, add the database URL to `.env` before initializing the database:
 
-```powershell
-$env:DATABASE_URL = 'postgresql+psycopg://USER:PASSWORD@HOST:5432/DATABASE'
+```dotenv
+DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST:5432/DATABASE
 ```
+
+Replace the placeholders with your PostgreSQL connection details, then run
+`init-db` and `create-user` using the commands above. Accounts in SQLite do not
+automatically transfer to PostgreSQL. Restart the app after changing `.env`.
+If login or the dashboard reports a missing table (such as `sale` or `product`),
+stop the app and run `init-db` again. It creates missing tables without deleting
+existing accounts or records.
 
 For deployment, set a stable random `SECRET_KEY` shared by all app workers and
 `SESSION_COOKIE_SECURE=1` when serving over HTTPS. Use a production WSGI server.
