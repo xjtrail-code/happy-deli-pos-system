@@ -1,6 +1,17 @@
+# Environment variables
+#.flaskenv
 .env
+instance/
+
+# Virtual environment
 .venv/
 venv/
+env/
+
+# Python cache
 __pycache__/
 *.pyc
-instance/
+*.pyo
+
+# VS Code
+.vscode/

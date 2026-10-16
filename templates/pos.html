@@ -60,8 +60,6 @@
     <button type="button" id="completeSaleButton">Complete Sale</button>
     <button type="button" id="voidTransactionButton">Void Transaction</button>
 
-        const quantityInput =
-            document.getElementById("productQuantity");
 
     {% if g.user.role == 'admin' %}
         <a href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a>
@@ -70,12 +68,13 @@
     {% include '_logout.html' %}
 {% endblock %}
 
-{% block extra_js %}
+{% block scripts %}
 <script>
 
     let cart = [];
     let paymentMethod = null;
 
+    const quantityInput = document.getElementById("productQuantity");
     // Connecticut sales tax
     const taxRate = 0.0635;
 

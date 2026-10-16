@@ -1,5 +1,12 @@
 ﻿import os
+from dotenv import load_dotenv
 import secrets
+from pathlib import Path
+
+from models import db
+from models import (User, Category, Product, Transaction, TransactionItem, 
+                    Inventory, Supplier, SupplierProduct, InventoryAdjustment, 
+                    DemandForecast, LowStockAlert, ReorderRecommendation)
 from datetime import date, timedelta
 from functools import wraps
 
@@ -8,10 +15,12 @@ from flask import Flask, abort, g, redirect, render_template, request, session, 
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
 
+load_dotenv()
+
 app = Flask(__name__)
 app.config.update(
     SECRET_KEY=os.environ.get('SECRET_KEY'),
-    SQLALCHEMY_DATABASE_URI=os.environ.get('DATABASE_URL', 'sqlite:///auth.sqlite3'),
+    SQLALCHEMY_DATABASE_URI=os.environ['DATABASE_URL'],
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
     SESSION_COOKIE_SECURE=os.environ.get('SESSION_COOKIE_SECURE') == '1',
@@ -28,9 +37,18 @@ if not app.config['SECRET_KEY']:
     with open(key_path, encoding='utf-8') as key_file:
         app.config['SECRET_KEY'] = key_file.read().strip()
 
-db = SQLAlchemy(app)
+#db = SQLAlchemy(app)
+db.init_app(app)
 
-
+@app.route("/test-db")
+def test_db():
+    try:
+        # Attempt to connect to the database
+        db.session.execute(db.text('SELECT 1'))
+        return "Database connection successful!"
+    except Exception as e:
+        return f"Database connection failed: {e}"
+'''
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -54,8 +72,8 @@ class Sale(db.Model):
         db.DateTime,
         nullable=False,
         default=db.func.now()
-    )
-
+    )'''
+'''
 PRODUCT_SEED = [
     ("012345678901", "Whole Milk 1 Gal", 3.99, 40),
     ("012345678902", "Large Eggs 12ct", 4.29, 55),
@@ -77,7 +95,7 @@ PRODUCT_SEED = [
     ("012345678918", "Ground Coffee 12 oz", 8.99, 27),
     ("012345678919", "Paper Towels 6 Roll", 9.99, 20),
     ("012345678920", "Dish Soap 20 oz", 3.99, 36),
-]
+]'''
 
 
 def login_required(role=None):
@@ -120,7 +138,7 @@ def home():
     if request.method == 'POST':
         username = request.form.get('username', '').strip().lower()
         user = db.session.scalar(db.select(User).where(User.username == username))
-        if user and check_password_hash(user.password_hash, request.form.get('password', '')):
+        if user and user.isActive and user.check_password(request.form.get('password', '')):
             session.clear()
             session['user_id'] = user.id
             session.permanent = True
@@ -148,9 +166,22 @@ def logout():
 def admin_dashboard():
     from datetime import datetime, date, timedelta
 
-    # Get today's completed sales
+    # Get today's completed transactions
     today = date.today()
 
+    transactions = db.session.scalars(
+        db.select(Transaction)
+        .where(Transaction.status == 'completed')
+        .where(Transaction.transactionDate >= datetime.combine(today, datetime.min.time()))
+        .where(Transaction.transactionDate < datetime.combine(
+            date.fromordinal(today.toordinal() + 1),
+            datetime.min.time()
+        ))
+    ).all()
+
+    # Calculate today's totals
+    todays_sales = round(float(sum(t.totalAmount for t in transactions)), 2)
+    todays_transactions = len(transactions)
     start_of_day = datetime.combine(
         today, datetime.min.time()
     )
@@ -181,10 +212,10 @@ def admin_dashboard():
     )
     todays_transactions = len(sales)
 
-    # Count products running low (5 or fewer)
+    # Count products at or below their reorder threshold
     low_stock_alerts = db.session.scalar(
-        db.select(db.func.count(Product.id))
-        .where(Product.quantity <= 5)
+        db.select(db.func.count(Inventory.id))
+        .where(Inventory.quantityOnHand <= Inventory.reorderThreshold)
     ) or 0
 
     # Send data to dashboard
@@ -211,12 +242,15 @@ def forgot_password():
 @app.route('/product-entry', methods=['GET', 'POST'])
 @login_required('admin')
 def product_entry():
+    from datetime import datetime
+    from decimal import Decimal
+
     message = None
 
     if request.method == 'POST':
         barcode = request.form['barcode'].strip()
         product_name = request.form['product_name'].strip()
-        price = float(request.form['price'])
+        price = Decimal(request.form['price']).quantize(Decimal('0.01'))
         quantity = int(request.form['quantity'])
 
         # Check if the barcode is already in inventory
@@ -226,21 +260,35 @@ def product_entry():
 
         if existing_product:
             # Product already exists - add to its quantity
-            existing_product.quantity += quantity
-            existing_product.price = price
+            existing_product.inventory.quantityOnHand += quantity
+            existing_product.inventory.lastUpdated = datetime.now()
+            existing_product.sellingPrice = price
 
             message = (
-                f"{existing_product.name} was added successfully! "
-                f"New quantity: {existing_product.quantity}"
+                f"{existing_product.productName} was added successfully! "
+                f"New quantity: {existing_product.inventory.quantityOnHand}"
             )
 
         else:
+            # Products require a category, so new ones go into "Uncategorized"
+            category = db.session.scalar(
+                db.select(Category).where(Category.categoryName == 'Uncategorized')
+            )
+            if category is None:
+                category = Category(categoryName='Uncategorized')
+
             # This is a brand-new product
             product = Product(
                 barcode=barcode,
-                name=product_name,
-                price=price,
-                quantity=quantity
+                productName=product_name,
+                sellingPrice=price,
+                taxRate=Decimal('0.0635'),
+                category=category
+            )
+            product.inventory = Inventory(
+                quantityOnHand=quantity,
+                reorderThreshold=5,
+                reorderQuantity=20
             )
 
             db.session.add(product)
@@ -257,8 +305,50 @@ def product_entry():
 @app.route('/inventory')
 @login_required('admin')
 def inventory():
-    products = db.session.scalars(db.select(Product)).all()
+    products = db.session.scalars(db.select(Product).where(Product.isActive.is_(True)).order_by(Product.productName)).all()
     return render_template('inventory.html', products=products)
+
+
+@app.post('/inventory/receive')
+@login_required('admin')
+def receive_inventory_stock():
+    from datetime import datetime
+    try:
+        product_id = int(request.form.get('product_id', ''))
+    except ValueError:
+        abort(400, description='No product selected.')
+    product = db.session.get(Product, product_id)
+    if product is None:
+        abort(404)
+
+    # Server-side validation: never trust the browser's total.
+    try:
+        units = int(request.form.get('total_units', ''))
+    except ValueError:
+        abort(400, description='Enter a whole number of units.')
+    if units < 1 or units > 1_000_000:
+        abort(400, description='Units must be between 1 and 1,000,000.')
+
+    inv = product.inventory
+    if inv is None:
+        inv = Inventory(productId=product.id, quantityOnHand=0,
+                        reorderThreshold=0, reorderQuantity=0)
+        db.session.add(inv)
+
+    inv.quantityOnHand += units
+    inv.lastUpdated = datetime.now()
+
+    db.session.add(InventoryAdjustment(
+        productId=product.id,
+        userId=g.user.id,
+        quantityChanged=units,
+        adjustmentType='addition',
+        reason='Stock received via inventory page',
+    ))
+    db.session.commit()
+    return redirect(url_for('inventory', stock_added=1))
+
+
 
 @app.route('/product-lookup/<barcode>')
 @login_required()
@@ -270,9 +360,9 @@ def product_lookup(barcode):
     if product:
         return {
             'found': True,
-            'name': product.name,
-            'price': product.price,
-            'quantity': product.quantity
+            'name': product.productName,
+            'price': float(product.sellingPrice),
+            'quantity': product.inventory.quantityOnHand if product.inventory else 0
         }
 
     return {
@@ -292,7 +382,7 @@ def delete_product(product_id):
 
     return redirect(url_for('inventory'))
 
-@app.cli.command('seed-products')
+'''@app.cli.command('seed-products')
 def seed_products():
     """Insert sample products if the table is empty."""
     if db.session.scalar(db.select(db.func.count(Product.id))) > 0:
@@ -303,13 +393,13 @@ def seed_products():
         for b, n, p, q in PRODUCT_SEED
     )
     db.session.commit()
-    click.echo(f'Seeded {len(PRODUCT_SEED)} products.')
+    click.echo(f'Seeded {len(PRODUCT_SEED)} products.')'''
 
-@app.cli.command('init-db')
+'''@app.cli.command('init-db')
 def init_db():
     """Create missing tables without deleting existing data."""
     db.create_all()
-    click.echo('Database initialized.')
+    click.echo('Database initialized.')'''
 
 
 @app.cli.command('create-user')
@@ -335,7 +425,10 @@ def create_user(username, role, password):
 @login_required()
 def complete_sale():
     import json
+    from datetime import datetime
     from decimal import Decimal, ROUND_HALF_UP
+
+    cents = Decimal('0.01')
 
     try:
         cart = json.loads(request.form.get('cart', '[]'))
@@ -343,10 +436,14 @@ def complete_sale():
             'payment_method', ''
         ).strip().lower()
 
-        if payment_method not in ('cash', 'card'):
+        # The POS currently sends "card"; Transaction stores credit or debit
+        if payment_method == 'card':
+            payment_method = 'credit'
+
+        if payment_method not in ('cash', 'credit', 'debit'):
             return {
                 'success': False,
-                'error': 'Please select Cash or Card.'
+                'error': 'Please select Cash, Credit or Debit.'
             }, 400
 
         if not isinstance(cart, list) or not cart:
@@ -372,11 +469,14 @@ def complete_sale():
             )
 
         subtotal = Decimal('0.00')
+        tax_amount = Decimal('0.00')
+        items = []
 
         for barcode, quantity in quantities.items():
             product = db.session.scalar(
                 db.select(Product).where(
-                    Product.barcode == barcode
+                    Product.barcode == barcode,
+                    Product.isActive.is_(True)
                 )
             )
 
@@ -387,42 +487,65 @@ def complete_sale():
                     'error': f'Product {barcode} not found.'
                 }, 400
 
-            if product.quantity < quantity:
+            # Lock the stock row so two registers can't oversell the same item
+            stock = db.session.scalar(
+                db.select(Inventory)
+                .where(Inventory.productId == product.id)
+                .with_for_update()
+            )
+
+            if stock is None or stock.quantityOnHand < quantity:
                 db.session.rollback()
                 return {
                     'success': False,
-                    'error': f'Not enough stock for {product.name}.'
+                    'error': f'Not enough stock for {product.productName}.'
                 }, 400
 
-            product.quantity -= quantity
+            stock.quantityOnHand -= quantity
+            stock.lastUpdated = datetime.now()
 
-            subtotal += (
-                Decimal(str(product.price)) * quantity
+            # Cost comes from the preferred supplier; 0.00 if none is set up yet
+            supplier_product = db.session.scalar(
+                db.select(SupplierProduct)
+                .where(SupplierProduct.productId == product.id)
+                .order_by(SupplierProduct.isPrefered.desc(), SupplierProduct.unitCost)
+            )
+            unit_cost = supplier_product.unitCost if supplier_product else Decimal('0.00')
+
+            line_total = (product.sellingPrice * quantity).quantize(
+                cents, rounding=ROUND_HALF_UP
+            )
+            subtotal += line_total
+            tax_amount += (line_total * product.taxRate).quantize(
+                cents, rounding=ROUND_HALF_UP
             )
 
-        subtotal = subtotal.quantize(
-            Decimal('0.01'),
-            rounding=ROUND_HALF_UP
+            items.append(TransactionItem(
+                product=product,
+                quantity=quantity,
+                unitPrice=product.sellingPrice,
+                unitCost=unit_cost,
+                lineTotal=line_total
+            ))
+
+        total = subtotal + tax_amount
+
+        transaction = Transaction(
+            userId=g.user.id,
+            paymentMethod=payment_method,
+            subtotal=subtotal,
+            taxAmount=tax_amount,
+            totalAmount=total,
+            status='completed',
+            items=items
         )
 
-        tax = (subtotal * Decimal('0.0635')).quantize(
-            Decimal('0.01'),
-            rounding=ROUND_HALF_UP
-        )
-
-        total = subtotal + tax
-
-        sale = Sale(
-            total=float(total),
-            payment_method=payment_method
-        )
-
-        db.session.add(sale)
+        db.session.add(transaction)
         db.session.commit()
 
         return {
             'success': True,
-            'sale_id': sale.id,
+            'sale_id': transaction.transactionID,
             'total': float(total)
         }
 
@@ -446,26 +569,28 @@ def complete_sale():
 @app.route('/reports')
 @login_required('admin')
 def reports():
-    sales = db.session.scalars(
-        db.select(Sale).order_by(Sale.created_at.desc())
+    transactions = db.session.scalars(
+        db.select(Transaction)
+        .where(Transaction.status == 'completed')
+        .order_by(Transaction.transactionDate.desc())
     ).all()
 
-    total_revenue = sum(sale.total for sale in sales)
-    total_transactions = len(sales)
+    total_revenue = sum(t.totalAmount for t in transactions)
+    total_transactions = len(transactions)
 
     cash_sales = sum(
-        sale.total for sale in sales
-        if sale.payment_method.lower() == 'cash'
+        t.totalAmount for t in transactions
+        if t.paymentMethod == 'cash'
     )
 
     card_sales = sum(
-        sale.total for sale in sales
-        if sale.payment_method.lower() == 'card'
+        t.totalAmount for t in transactions
+        if t.paymentMethod in ('credit', 'debit')
     )
 
     return render_template(
         'reports.html',
-        sales=sales,
+        sales=transactions,
         total_revenue=total_revenue,
         total_transactions=total_transactions,
         cash_sales=cash_sales,
@@ -486,5 +611,73 @@ def supplier_management():
     return render_template('supplier_management.html')
 
 
+# ---------------------------------------------------------------------------
+# TEMPORARY SEED DATA - remove this block (and the calls in __main__) once
+# you no longer want the database rebuilt from scratch on startup.
+# ---------------------------------------------------------------------------
+SEED_USERS = [
+    # (email, username, firstName, lastName, role)
+    ("admin@example.com", "owner", "Ada", "Admin", "admin"),
+    ("cashier@example.com", "cashier", "Casey", "Cashier", "cashier"),
+]
+
+SEED_PRODUCTS = [
+    # (category, barcode, productName, sellingPrice, quantityOnHand, reorderThreshold, reorderQuantity)
+    ("Dairy & Eggs", "012345678901", "Whole Milk 1 Gal",     "3.99", 40, 10, 30),
+    ("Dairy & Eggs", "012345678902", "Large Eggs 12ct",      "4.29", 55, 15, 40),
+    ("Bakery",       "012345678903", "White Bread Loaf",     "2.49", 35, 10, 30),
+    ("Dairy & Eggs", "012345678904", "Butter Unsalted 1 lb", "4.99", 30,  8, 20),
+    ("Dairy & Eggs", "012345678905", "Cheddar Cheese 8 oz",  "3.79", 28,  8, 20),
+]
+
+
+def seed_database():
+    """Populate a freshly created database with starter users and products."""
+    from decimal import Decimal
+
+    password = os.environ.get('SEED_PASSWORD')
+    if not password or len(password) < 12:
+        raise SystemExit('Set SEED_PASSWORD (12+ characters) in your .env before starting the app.')
+
+    for email, username, first_name, last_name, role in SEED_USERS:
+        user = User(
+            email=email,
+            username=username,
+            firstName=first_name,
+            lastName=last_name,
+            role=role
+        )
+        user.set_password(password)
+        db.session.add(user)
+
+    categories = {}
+    for category, barcode, name, price, qty, threshold, reorder_qty in SEED_PRODUCTS:
+        if category not in categories:
+            categories[category] = Category(categoryName=category)
+
+        product = Product(
+            barcode=barcode,
+            productName=name,
+            sellingPrice=Decimal(price),
+            taxRate=Decimal('0.0635'),
+            category=categories[category]
+        )
+        product.inventory = Inventory(
+            quantityOnHand=qty,
+            reorderThreshold=threshold,
+            reorderQuantity=reorder_qty
+        )
+        db.session.add(product)
+
+    db.session.commit()
+
 if __name__ == '__main__':
+    with app.app_context():
+        #db.drop_all()
+        #print("All table were dropped")
+        #db.create_all()
+        #print("All tables were created")
+        db.create_all()      # TEMPORARY: rebuild tables from the models
+        #seed_database()      # TEMPORARY: insert starter data
+        print("Tables created and database seeded")
     app.run(debug=True)
