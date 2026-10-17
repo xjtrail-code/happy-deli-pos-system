@@ -1,177 +1,239 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Happy Deli - Product Entry</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-</head>
+{% extends "base.html" %}
 
-<body>
+{% block title %}Product Entry | Happy Deli Junco{% endblock %}
 
-    <h1>Inventory</h1>
-    <h2>Product Entry</h2>
+{% block content %}
+<section class="product-entry-page">
+    <nav class="product-entry-top-links" aria-label="Product entry navigation">
+        <a class="btn-link-icon" href="{{ url_for('inventory') }}">
+            <i class="bi bi-arrow-left" aria-hidden="true"></i>
+            <span>View Inventory</span>
+        </a>
+        <a class="btn-link-icon" href="{{ url_for('admin_dashboard') }}">
+            <i class="bi bi-house-fill" aria-hidden="true"></i>
+            <span>Back to Dashboard</span>
+        </a>
+    </nav>
+
+    <header class="product-entry-title">
+        <h1>Product Entry</h1>
+    </header>
 
     {% if message %}
-        <p><strong>{{ message }}</strong></p>
+        <div class="alert alert-{{ message_type|default('info') }} product-entry-message" role="status">
+            {{ message }}
+        </div>
     {% endif %}
 
-    <form method="POST">
+    <div class="product-entry-card">
+        <div class="product-entry-card-header">
+            <h2><i class="bi bi-box-seam me-2" aria-hidden="true"></i>Product information</h2>
+        </div>
 
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <form method="POST" class="product-entry-form" id="productEntryForm" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <!-- BARCODE -->
-        <label for="barcode">Barcode:</label>
-        <input
-            type="text"
-            id="barcode"
-            name="barcode"
-            placeholder="Scan barcode"
-            autofocus
-            required
-        >
+            <div class="row g-4 mb-3">
+                <div class="col-6">
+                    <label for="barcode" class="form-label">Barcode </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-upc-scan" aria-hidden="true"></i></span>
+                        <input type="text" class="form-control" id="barcode" name="barcode"
+                               placeholder="Scan or enter barcode" autocomplete="off" required autofocus
+                               value="{{ form_data.barcode if form_data is defined else '' }}">
+                        <button type="button" class="btn btn-outline-primary" id="lookupBarcodeButton" onclick="lookupProduct()">
+                            Check Barcode
+                        </button>
+                    </div>
+                    <div id="product_status" class="product-lookup-status" role="status" aria-live="polite"></div>
+                </div>
+            </div>
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <label for="product_name" class="form-label">Product Name </label>
+                    <input type="text" class="form-control" id="product_name" name="product_name"
+                           placeholder="Enter product name" maxlength="150" required
+                           value="{{ form_data.product_name if form_data is defined else '' }}">
+                </div>
 
-        <button type="button" onclick="lookupProduct()">
-            Check Barcode
-        </button>
+                <div class="col-md-6">
+                    <label for="category" class="form-label">Category </label>
+                    <input type="text" class="form-control" id="category" name="category"
+                           placeholder="e.g. Beverages, Snacks, Dairy" maxlength="100" required
+                           list="categorySuggestions" autocomplete="off"
+                           value="{{ form_data.category if form_data is defined else '' }}">
+                    <datalist id="categorySuggestions">
+                        {% for category in categories|default([]) %}
+                            <option value="{{ category.categoryName }}"></option>
+                        {% endfor %}
+                    </datalist>
+                </div>
 
-        <br><br>
+                <div class="col-md-6">
+                    <label for="cost_price" class="form-label">Cost Price ($)</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-currency-dollar" aria-hidden="true"></i></span>
+                        <input type="number" class="form-control" id="cost_price" name="cost_price"
+                               min="0" step="0.01" placeholder="Enter supplier cost" inputmode="decimal">
+                    </div>
+                    <div class="form-text">Used to calculate the suggested selling price.</div>
+                </div>
 
-        <!-- This will show whether the product was found -->
-        <div id="product_status"></div>
+                <div class="col-md-6">
+                    <label for="margin_percent" class="form-label">Desired Profit Margin (%)</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" id="margin_percent" name="margin_percent"
+                               min="0" max="99.99" step="0.01" placeholder="e.g. 30" inputmode="decimal">
+                        <span class="input-group-text">%</span>
+                    </div>
+                    <div class="form-text">Enter a margin below 100% to suggest a selling price.</div>
+                </div>
 
-        <br>
+                <div class="col-md-6">
+                    <label for="price" class="form-label">Selling Price ($) </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-tag" aria-hidden="true"></i></span>
+                        <input type="number" class="form-control" id="price" name="price"
+                               min="0" step="0.01" placeholder="Enter or calculate selling price" required
+                               inputmode="decimal" value="{{ form_data.price if form_data is defined else '' }}">
+                    </div>
+                    <div class="price-suggestion-note" id="price_suggestion_note" aria-live="polite">
+                        Enter cost price and desired margin to calculate a suggested price.
+                    </div>
+                </div>
 
-        <!-- PRODUCT NAME -->
-        <label for="product_name">Product Name:</label>
-        <input
-            type="text"
-            id="product_name"
-            name="product_name"
-            placeholder="Enter product name"
-            required
-        >
+                <div class="col-md-6">
+                    <label for="quantity" class="form-label">Quantity to Add </label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-boxes" aria-hidden="true"></i></span>
+                        <input type="number" class="form-control" id="quantity" name="quantity"
+                               min="1" max="1000000" step="1" placeholder="Enter starting or received units"
+                               required inputmode="numeric"
+                               value="{{ form_data.quantity if form_data is defined else '' }}">
+                    </div>
+                    <div class="form-text">For an existing barcode, this quantity is added to current stock.</div>
+                </div>
+            </div>
 
-        <br><br>
+            <div class="d-flex flex-column flex-sm-row justify-content-end gap-2 mt-4 pt-3 border-top">
+                <a href="{{ url_for('inventory') }}"
+                class="btn btn-outline-secondary d-inline-flex align-items-center justify-content-center">
+                    Cancel
+                </a>
 
-        <!-- PRICE -->
-        <label for="price">Price:</label>
-        <input
-            type="number"
-            id="price"
-            name="price"
-            min="0"
-            step="0.01"
-            placeholder="Enter price"
-            required
-        >
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-plus-lg me-2" aria-hidden="true"></i>Add Product
+                </button>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}
 
-        <br><br>
+{% block scripts %}
+<script>
+    const barcodeInput = document.getElementById('barcode');
+    const nameInput = document.getElementById('product_name');
+    const priceInput = document.getElementById('price');
+    const categoryInput = document.getElementById('category');
+    const costInput = document.getElementById('cost_price');
+    const marginInput = document.getElementById('margin_percent');
+    const statusBox = document.getElementById('product_status');
+    const priceNote = document.getElementById('price_suggestion_note');
+    let priceWasSuggested = false;
 
-        <!-- COST PRICE -->
-<label for="cost_price">Cost Price ($):</label>
-<input
-    type="number"
-    id="cost_price"
-    name="cost_price"
-    min="0"
-    step="0.01"
-    placeholder="Enter supplier cost"
-    oninput="calculateProfitMargin()"
->
+    function setLookupStatus(message, kind) {
+        statusBox.textContent = message;
+        statusBox.className = 'product-lookup-status' + (kind ? ' status-' + kind : '');
+    }
 
-<br><br>
-
-<!-- PROFIT MARGIN -->
-<label>Profit Margin:</label>
-<strong id="profit_margin">0.00%</strong>
-
-<br><br>
-
-        <!-- QUANTITY -->
-        <label for="quantity">Quantity:</label>
-        <input
-            type="number"
-            id="quantity"
-            name="quantity"
-            min="1"
-            placeholder="Enter quantity"
-            required
-        >
-
-        <br><br>
-
-        <button type="submit">Add Product</button>
-
-    </form>
-
-    <br>
-
-    <a href="{{ url_for('inventory') }}">View Inventory</a>
-
-    <br><br>
-
-    <a href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a>
-
-
-    <script>
-
-        function lookupProduct() {
-
-            const barcode = document.getElementById("barcode").value;
-
-            if (!barcode) {
-                document.getElementById("product_status").innerHTML =
-                    "<strong>Please enter a barcode.</strong>";
-                return;
-            }
-
-            fetch("/product-lookup/" + encodeURIComponent(barcode))
-                .then(response => response.json())
-                .then(data => {
-
-                    const status = document.getElementById("product_status");
-                    const name = document.getElementById("product_name");
-                    const price = document.getElementById("price");
-                    const quantity = document.getElementById("quantity");
-
-                    if (data.found) {
-
-                        status.innerHTML =
-                            "<strong>Product Found: " +
-                            data.name +
-                            " | Current Stock: " +
-                            data.quantity +
-                            "</strong>";
-
-                        name.value = data.name;
-                        price.value = data.price;
-
-                        // Existing product information should not
-                        // need to be typed again.
-                        name.readOnly = true;
-                        price.readOnly = true;
-
-                        quantity.value = "";
-                        quantity.focus();
-
-                    } else {
-
-                        status.innerHTML =
-                            "<strong>New Product - Barcode Not Found</strong>";
-
-                        name.value = "";
-                        price.value = "";
-
-                        name.readOnly = false;
-                        price.readOnly = false;
-
-                        name.focus();
-                    }
-
-                });
-
+    async function lookupProduct() {
+        const barcode = barcodeInput.value.trim();
+        if (!barcode) {
+            setLookupStatus('Please enter or scan a barcode first.', 'error');
+            barcodeInput.focus();
+            return;
         }
 
-    </script>
+        const lookupButton = document.getElementById('lookupBarcodeButton');
+        lookupButton.disabled = true;
+        lookupButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Checking';
 
-</body>
-</html>
+        try {
+            const response = await fetch('/product-lookup/' + encodeURIComponent(barcode), {
+                headers: { 'Accept': 'application/json' }
+            });
+            if (!response.ok) throw new Error('Barcode lookup failed.');
+            const data = await response.json();
+
+            if (data.found) {
+                nameInput.value = data.name || '';
+                priceInput.value = Number(data.price || 0).toFixed(2);
+                categoryInput.value = data.category || '';
+                nameInput.readOnly = true;
+                setLookupStatus('Product found. Current stock: ' + data.quantity + ' units. Submitting will add the entered quantity to existing stock.', 'success');
+                document.getElementById('quantity').focus();
+                priceWasSuggested = false;
+                priceNote.textContent = 'Current selling price loaded. You can change it if needed.';
+            } else {
+                nameInput.value = '';
+                categoryInput.value = '';
+                nameInput.readOnly = false;
+                setLookupStatus('New barcode. Enter the product name, category, price, and quantity.', 'info');
+                nameInput.focus();
+            }
+        } catch (error) {
+            setLookupStatus('Could not check this barcode. Please try again.', 'error');
+        } finally {
+            lookupButton.disabled = false;
+            lookupButton.innerHTML = '<i class="bi bi-upc-scan me-1" aria-hidden="true"></i>Check Barcode';
+        }
+    }
+
+    function calculateSuggestedPrice() {
+        const costRaw = costInput.value.trim();
+        const marginRaw = marginInput.value.trim();
+        if (costRaw === '' || marginRaw === '') {
+            if (priceWasSuggested) priceInput.value = '';
+            priceWasSuggested = false;
+            priceNote.textContent = 'Enter cost price and desired margin to calculate a suggested price.';
+            return;
+        }
+
+        const cost = Number(costRaw);
+        const margin = Number(marginRaw);
+        if (!Number.isFinite(cost) || cost < 0 || !Number.isFinite(margin) || margin < 0 || margin >= 100) {
+            if (priceWasSuggested) priceInput.value = '';
+            priceWasSuggested = false;
+            priceNote.textContent = 'Enter a cost of $0 or more and a margin from 0% to less than 100%.';
+            return;
+        }
+
+        // Gross margin = (selling price - cost) / selling price.
+        const suggested = margin === 0 ? cost : cost / (1 - margin / 100);
+        priceInput.value = suggested.toFixed(2);
+        priceWasSuggested = true;
+        priceNote.textContent = 'Suggested selling price: $' + suggested.toFixed(2) + ' (based on gross margin). You can edit it manually.';
+    }
+
+    costInput.addEventListener('input', calculateSuggestedPrice);
+    marginInput.addEventListener('input', calculateSuggestedPrice);
+    priceInput.addEventListener('input', () => {
+        priceWasSuggested = false;
+        if (priceInput.value.trim()) priceNote.textContent = 'Selling price entered manually.';
+    });
+
+    document.getElementById('productEntryForm').addEventListener('submit', (event) => {
+        const quantity = Number(document.getElementById('quantity').value);
+        const price = Number(priceInput.value);
+        if (!barcodeInput.value.trim() || !nameInput.value.trim() || !categoryInput.value.trim() ||
+            priceInput.value.trim() === '' || !Number.isFinite(price) || price < 0 ||
+            !Number.isInteger(quantity) || quantity < 1 || quantity > 1000000) {
+            event.preventDefault();
+            event.stopPropagation();
+            setLookupStatus('Please complete all required fields and enter a valid price and whole-number quantity.', 'error');
+            return;
+        }
+    });
+</script>
+{% endblock %}

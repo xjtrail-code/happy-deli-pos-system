@@ -80,7 +80,7 @@
                     <i class="bi bi-person-fill header-user-icon"></i>
 
                     <span class="user-name">
-                        {{ current_user.name if current_user is defined else 'Administrator' }}
+                        {{ g.user.username if g.user is defined}}
                     </span>
 
                     <button
@@ -142,13 +142,14 @@
 <!-- PAGE LAYOUT                                               -->
 <!-- ========================================================= -->
 
-<div class="page-wrapper">
+<div class="page-wrapper{% if request.endpoint == 'product_entry' %} page-wrapper-no-sidebar{% endif %}">
 
 
     <!-- ===================================================== -->
     <!-- LEFT SIDEBAR                                          -->
     <!-- ===================================================== -->
 
+    {% if request.endpoint != 'product_entry' %}
     <aside class="sidebar">
 
         <nav class="sidebar-nav">
@@ -307,13 +308,13 @@
         </nav>
         
     </aside>
-
+    {% endif %}
 
     <!-- ===================================================== -->
     <!-- MAIN CONTENT                                          -->
     <!-- ===================================================== -->
 
-    <main class="main-content">
+    <main class="main-content{% if request.endpoint == 'product_entry' %} main-content-no-sidebar{% endif %}">
 
         {% block content %}
         {% endblock %}
