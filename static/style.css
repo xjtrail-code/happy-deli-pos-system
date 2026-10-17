@@ -19,7 +19,7 @@ body {
 /* ========================================================= */
 
 .top-header {
-    height: 92px;
+    height: 62px;
     background-color: #123a60;
     color: white;
     position: fixed;
@@ -729,7 +729,7 @@ body:has(.login-page) {
 
     position: fixed;
 
-    top: 92px;
+    top: 62px;
     bottom: 0;
     left: 0;
 
@@ -974,8 +974,8 @@ body:has(.login-page) {
 .inventory-heading h1 { margin:0; font-size:clamp(25px,2.2vw,32px); font-weight:750; color:#123e6b; }
 .inventory-heading h1 i { margin-right:8px; }
 .inventory-heading p { margin:7px 0 0; color:#58769b; }
-.inventory-heading-actions { display:flex; align-items:center; gap:12px; width:min(100%,690px); }
-.inventory-search { flex:1; min-width:180px; }
+.inventory-heading-actions { display:flex; align-items:center; gap:12px; width:min(100%,575px); }
+.inventory-search { flex: 1; min-width:180px; }
 .inventory-search .input-group-text,.inventory-search .form-control { background:#fff; border-color:#cbdff8; color:#123e6b; min-height:48px; }
 .inventory-search .input-group-text { color:#4773aa; }
 .add-product-btn { min-height:48px; display:inline-flex; align-items:center; gap:8px; white-space:nowrap; }
@@ -998,3 +998,109 @@ body:has(.login-page) {
 /* Inactive stock-entry method looks muted but stays clickable. */
 .stock-entry-option:not(.stock-entry-selected) .form-control { background-color: #f4f7fb; }
 .stock-entry-option.stock-entry-selected .form-control { background-color: #fff; }
+
+
+/* =========================================================
+   PRODUCT ENTRY PAGE — Happy Deli Junco theme
+   ========================================================= */
+.page-wrapper-no-sidebar .main-content-no-sidebar {
+    margin-left: 0;
+    width: 100%;
+    min-height: calc(100vh - 92px);
+    padding: clamp(18px, 3vw, 36px);
+}
+
+.product-entry-page {
+    width: min(100%, 980px);
+    margin: 0 auto;
+    color: #123e6b;
+}
+.product-entry-top-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+.product-entry-top-links .btn-link-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 13px;
+    border: 1px solid #cbdff8;
+    border-radius: 8px;
+    background: #fff;
+    color: #176fe8;
+    font-weight: 650;
+    text-decoration: none;
+    transition: background-color .15s ease, border-color .15s ease;
+}
+.product-entry-top-links .btn-link-icon:hover {
+    background: #f0f6ff;
+    border-color: #8bb9f6;
+    color: #095dcc;
+}
+.product-entry-title { margin-bottom: 20px; }
+.product-entry-title h1 {
+    margin: 0;
+    color: #123e6b;
+    font-size: clamp(26px, 3vw, 34px);
+    font-weight: 750;
+    letter-spacing: -.4px;
+}
+.product-entry-title p { margin: 7px 0 0; color: #6782a5; }
+.product-entry-card {
+    background: rgba(255,255,255,.96);
+    border: 1px solid #d3e4fb;
+    border-radius: 13px;
+    box-shadow: 0 8px 28px rgba(26, 75, 130, .06);
+    overflow: hidden;
+}
+.product-entry-card-header {
+    padding: 20px 24px;
+    background: linear-gradient(135deg, #f5f9ff, #fff);
+    border-bottom: 1px solid #e0ebf9;
+}
+.product-entry-card-header h2 { margin: 0; font-size: 19px; font-weight: 750; color: #123e6b; }
+.product-entry-card-header p { margin: 5px 0 0; font-size: 13px; color: #7186aa; }
+.product-entry-form { padding: clamp(18px, 3vw, 28px); }
+.product-entry-form .form-label { color: #355b86; font-size: 14px; font-weight: 650; margin-bottom: 7px; }
+.product-entry-form .form-control {
+    min-height: 46px;
+    border-color: #cbdff8;
+    border-radius: 8px;
+    color: #123e6b;
+    background-color: #fbfdff;
+    box-shadow: none;
+}
+.product-entry-form .form-control:focus {
+    border-color: #438cf4;
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(13,110,253,.10);
+}
+.product-entry-form .form-control::placeholder { color: #8ba0bd; }
+.product-entry-form .form-control[readonly] { background: #eef4fb; }
+.product-entry-form .form-text { color: #7186aa; font-size: 12px; }
+.product-entry-form .input-group-text {
+    background: #f1f6fd;
+    color: #4773aa;
+    border-color: #cbdff8;
+    border-radius: 8px 0 0 8px;
+}
+.product-entry-form .input-group .form-control { border-radius: 0 8px 8px 0; }
+.product-lookup-status { padding: 11px 13px; border-radius: 8px; font-size: 13px; margin-top: 12px; }
+.product-lookup-status:empty { display: none; }
+.product-lookup-status.status-success { color: #08784f; background: #e1f7ed; border: 1px solid #bcebd6; }
+.product-lookup-status.status-info { color: #245a9b; background: #edf5ff; border: 1px solid #cfe2ff; }
+.product-lookup-status.status-error { color: #a52834; background: #fff0f1; border: 1px solid #ffd1d5; }
+.price-suggestion-note { margin-top: 7px; color: #6782a5; font-size: 12px; }
+.product-entry-form .btn-primary { min-height: 47px; border-radius: 8px; font-weight: 650; box-shadow: 0 3px 8px rgba(13,110,253,.12); }
+.product-entry-form .btn-outline-secondary { min-height: 47px; border-radius: 8px; }
+.product-entry-message { margin-bottom: 18px; }
+@media (max-width: 575.98px) {
+    .product-entry-top-links { align-items: stretch; }
+    .product-entry-top-links .btn-link-icon { justify-content: center; flex: 1 1 100%; }
+    .product-entry-card-header { padding: 17px 18px; }
+    .product-entry-form { padding: 18px; }
+}

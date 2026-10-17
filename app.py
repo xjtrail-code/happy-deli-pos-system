@@ -187,7 +187,7 @@ def admin_dashboard():
     )
     end_of_day = start_of_day + timedelta(days=1)
 
-    # TEMPORARY DEBUGGING
+    '''# TEMPORARY DEBUGGING
     print("Dashboard date:", today)
 
     all_sales = db.session.scalars(
@@ -211,7 +211,7 @@ def admin_dashboard():
         sum(sale.total for sale in sales), 2
     )
     todays_transactions = len(sales)
-
+'''
     # Count products at or below their reorder threshold
     low_stock_alerts = db.session.scalar(
         db.select(db.func.count(Inventory.id))
@@ -243,63 +243,99 @@ def forgot_password():
 @login_required('admin')
 def product_entry():
     from datetime import datetime
-    from decimal import Decimal
+    from decimal import Decimal, InvalidOperation
 
     message = None
+    message_type = 'success'
+    form_data = {}
 
     if request.method == 'POST':
-        barcode = request.form['barcode'].strip()
-        product_name = request.form['product_name'].strip()
-        price = Decimal(request.form['price']).quantize(Decimal('0.01'))
-        quantity = int(request.form['quantity'])
+        form_data = request.form.to_dict()
+        try:
+            barcode = request.form.get('barcode', '').strip()
+            product_name = request.form.get('product_name', '').strip()
+            category_name = request.form.get('category', '').strip()
+            price = Decimal(request.form.get('price', '').strip()).quantize(Decimal('0.01'))
+            quantity = int(request.form.get('quantity', ''))
 
-        # Check if the barcode is already in inventory
-        existing_product = db.session.scalar(
-            db.select(Product).where(Product.barcode == barcode)
-        )
+            if not barcode or not product_name or not category_name:
+                raise ValueError('Barcode, product name, and category are required.')
+            if price < 0:
+                raise ValueError('Selling price cannot be negative.')
+            if quantity < 1 or quantity > 1_000_000:
+                raise ValueError('Quantity must be between 1 and 1,000,000.')
 
-        if existing_product:
-            # Product already exists - add to its quantity
-            existing_product.inventory.quantityOnHand += quantity
-            existing_product.inventory.lastUpdated = datetime.now()
-            existing_product.sellingPrice = price
-
-            message = (
-                f"{existing_product.productName} was added successfully! "
-                f"New quantity: {existing_product.inventory.quantityOnHand}"
-            )
-
-        else:
-            # Products require a category, so new ones go into "Uncategorized"
+            # Find the entered category, or create it if this is a new category.
             category = db.session.scalar(
-                db.select(Category).where(Category.categoryName == 'Uncategorized')
+                db.select(Category).where(Category.categoryName.ilike(category_name))
             )
             if category is None:
-                category = Category(categoryName='Uncategorized')
+                category = Category(categoryName=category_name)
+                db.session.add(category)
+                db.session.flush()
 
-            # This is a brand-new product
-            product = Product(
-                barcode=barcode,
-                productName=product_name,
-                sellingPrice=price,
-                taxRate=Decimal('0.0635'),
-                category=category
-            )
-            product.inventory = Inventory(
-                quantityOnHand=quantity,
-                reorderThreshold=5,
-                reorderQuantity=20
+            # If the barcode already exists, update its category/price and add stock.
+            existing_product = db.session.scalar(
+                db.select(Product).where(Product.barcode == barcode)
             )
 
-            db.session.add(product)
+            if existing_product:
+                existing_product.productName = product_name
+                existing_product.category = category
+                existing_product.sellingPrice = price
 
-            message = f"{product_name} was added successfully!"
+                if existing_product.inventory is None:
+                    existing_product.inventory = Inventory(
+                        quantityOnHand=0,
+                        reorderThreshold=5,
+                        reorderQuantity=20
+                    )
+                existing_product.inventory.quantityOnHand += quantity
+                existing_product.inventory.lastUpdated = datetime.now()
 
-        db.session.commit()
+                message = (
+                    f"{existing_product.productName} updated successfully. "
+                    f"New quantity: {existing_product.inventory.quantityOnHand}."
+                )
+            else:
+                product = Product(
+                    barcode=barcode,
+                    productName=product_name,
+                    sellingPrice=price,
+                    taxRate=Decimal('0.0635'),
+                    category=category
+                )
+                product.inventory = Inventory(
+                    quantityOnHand=quantity,
+                    reorderThreshold=5,
+                    reorderQuantity=20
+                )
+                db.session.add(product)
+                message = f"{product_name} was added successfully."
 
+            db.session.commit()
+            form_data = {}
+
+        except (ValueError, InvalidOperation, TypeError) as error:
+            db.session.rollback()
+            message = str(error) or 'Please enter valid product information.'
+            message_type = 'danger'
+
+        except Exception:
+            db.session.rollback()
+            app.logger.exception('Product entry failed')
+            message = 'Could not save the product. Please check the information and try again.'
+            message_type = 'danger'
+
+    categories = db.session.scalars(
+        db.select(Category).order_by(Category.categoryName)
+    ).all()
     return render_template(
         'product_entry.html',
-        message=message
+        message=message,
+        message_type=message_type,
+        categories=categories,
+        form_data=form_data
     )
 
 @app.route('/inventory')
@@ -362,13 +398,14 @@ def product_lookup(barcode):
             'found': True,
             'name': product.productName,
             'price': float(product.sellingPrice),
+            'category': product.category.categoryName if product.category else '',
             'quantity': product.inventory.quantityOnHand if product.inventory else 0
         }
 
     return {
         'found': False
     }
-
+#no need to delete a product.
 @app.post('/delete-product/<int:product_id>')
 @login_required()
 def delete_product(product_id):
