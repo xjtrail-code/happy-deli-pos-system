@@ -63,6 +63,8 @@
 
     {% if g.user.role == 'admin' %}
         <a href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a>
+    {% else %}
+        <a href="{{ url_for('workspace') }}">Workspace</a>
     {% endif %}
 
     {% include '_logout.html' %}

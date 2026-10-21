@@ -5,13 +5,13 @@
 {% block content %}
 <section class="product-entry-page">
     <nav class="product-entry-top-links" aria-label="Product entry navigation">
-        <a class="btn-link-icon" href="{{ url_for('inventory') }}">
+        {% if g.user.has_permission('inventory') %}<a class="btn-link-icon" href="{{ url_for('inventory') }}">
             <i class="bi bi-arrow-left" aria-hidden="true"></i>
             <span>View Inventory</span>
         </a>
-        <a class="btn-link-icon" href="{{ url_for('admin_dashboard') }}">
+        {% endif %}<a class="btn-link-icon" href="{{ url_for('admin_dashboard' if g.user.role == 'admin' else 'workspace') }}">
             <i class="bi bi-house-fill" aria-hidden="true"></i>
-            <span>Back to Dashboard</span>
+            <span>Back to Home</span>
         </a>
     </nav>
 

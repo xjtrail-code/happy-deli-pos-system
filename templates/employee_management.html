@@ -1,22 +1,41 @@
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Employee Management</title>
-</head>
-<body>
-
-    <h1>Employee Management</h1>
-
-    <h2>Coming Soon!</h2>
-
-    <p>This feature is currently under development.</p>
-
-    <a href="{{ url_for('admin_dashboard') }}">
-        <button type="button">Back to Dashboard</button>
-    </a>
-
-</body>
-</html>
+﻿{% extends "base.html" %}
+{% block title %}Employee Management | Happy Deli Junco{% endblock %}
+{% macro employee_form(employee=none) %}
+<form method="post" class="row g-3">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="action" value="{{ 'update' if employee else 'create' }}">
+  {% if employee %}<input type="hidden" name="employee_id" value="{{ employee.id }}">{% endif %}
+  {% for field, label, value, limit in [('first_name', 'First name', employee.firstName if employee else '', 50), ('last_name', 'Last name', employee.lastName if employee else '', 50), ('username', 'Username', employee.username if employee else '', 50), ('email', 'Email', employee.email if employee else '', 100)] %}
+  <div class="col-md-6"><label class="form-label" for="{{ field }}-{{ employee.id if employee else 'new' }}">{{ label }}</label>
+    <input id="{{ field }}-{{ employee.id if employee else 'new' }}" class="form-control" name="{{ field }}" type="{{ 'email' if field == 'email' else 'text' }}" value="{{ value }}" maxlength="{{ limit }}" required autocomplete="off"></div>
+  {% endfor %}
+  <div class="col-md-6"><label class="form-label" for="password-{{ employee.id if employee else 'new' }}">{{ 'New password (leave blank to keep current)' if employee else 'Password' }}</label>
+    <input id="password-{{ employee.id if employee else 'new' }}" class="form-control" name="password" type="password" minlength="12" autocomplete="new-password" {% if not employee %}required{% endif %}>
+    <div class="form-text">At least 12 characters.</div></div>
+  <div class="col-md-6"><label class="form-label" for="confirm-{{ employee.id if employee else 'new' }}">Confirm password</label>
+    <input id="confirm-{{ employee.id if employee else 'new' }}" class="form-control" name="confirm_password" type="password" minlength="12" autocomplete="new-password" {% if not employee %}required{% endif %}></div>
+  <div class="col-md-6"><label class="form-label" for="role-{{ employee.id if employee else 'new' }}">Role</label>
+    <select id="role-{{ employee.id if employee else 'new' }}" class="form-select" name="role"><option value="cashier">Employee / Cashier</option><option value="admin" {% if employee and employee.role == 'admin' %}selected{% endif %}>Administrator</option></select></div>
+  <div class="col-md-6 d-flex align-items-center"><label><input class="form-check-input me-2" type="checkbox" name="is_active" {% if not employee or employee.isActive %}checked{% endif %}>Active account</label></div>
+  <fieldset class="col-12"><legend class="fs-6">Employee permissions</legend>
+    <p class="text-muted small">Administrators have full access, including employee management. These selections apply when the role is Employee / Cashier.</p>
+    {% for key, label in permissions.items() %}<label class="d-block mb-2"><input class="form-check-input me-2" type="checkbox" name="permissions" value="{{ key }}" {% if (employee and employee.has_permission(key)) or (not employee and key == 'pos') %}checked{% endif %}>{{ label }}</label>{% endfor %}
+  </fieldset>
+  <div class="col-12"><button class="btn btn-primary" type="submit">{{ 'Save changes' if employee else 'Create employee' }}</button></div>
+</form>
+{% endmacro %}
+{% block content %}
+<div class="container-fluid py-4">
+  <h1>Employee Management</h1>
+  <p class="text-muted">Create individual accounts and control each employee's access. Permission and activation changes apply on their next request.</p>
+  {% if error %}<div class="alert alert-danger" role="alert">{{ error }} Please re-enter your changes.</div>{% endif %}
+  {% for category, message in get_flashed_messages(with_categories=true) %}<div class="alert alert-{{ category }}" role="status">{{ message }}</div>{% endfor %}
+  <section class="card shadow-sm mb-4"><div class="card-body"><h2 class="h4">Create employee</h2>{{ employee_form() }}</div></section>
+  <h2 class="h4">Accounts ({{ employees|length }})</h2>
+  {% for employee in employees %}
+  <details class="card shadow-sm mb-3"><summary class="card-header p-3">{{ employee.firstName }} {{ employee.lastName }} · {{ employee.username }} · {{ employee.role }} · {{ 'Active' if employee.isActive else 'Inactive' }}{% if employee.id == g.user.id %} (you){% endif %}</summary>
+    <div class="card-body">{{ employee_form(employee) }}</div>
+  </details>
+  {% endfor %}
+</div>
+{% endblock %}

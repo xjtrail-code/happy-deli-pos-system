@@ -153,158 +153,23 @@
     <aside class="sidebar">
 
         <nav class="sidebar-nav">
-
-
-            <!-- DASHBOARD -->
-            <a
-                href="{{ url_for('admin_dashboard') }}"
-                class="sidebar-link
-                {% if request.endpoint == 'admin_dashboard' %}
-                    active
-                {% endif %}"
-            >
-
-                <i class="bi bi-house-fill sidebar-icon"></i>
-
-                <span>Admin Dashboard</span>
-
-            </a>
-
-
-            <!-- POS / CHECKOUT -->
-            <a
-                href="{{ url_for('pos') }}"
-                class="sidebar-link
-                {% if request.endpoint == 'pos' %}
-                    active
-                {% endif %}"
-            >
-
-                <i class="bi bi-calculator-fill sidebar-icon"></i>
-
-                <span>POS / Checkout</span>
-
-            </a>
-
-
-            <!-- INVENTORY -->
-            <a
-                href="{{ url_for('inventory') }}"
-                class="sidebar-link
-                {% if request.endpoint == 'inventory' %}
-                    active
-                {% endif %}"
-            >
-
-                <i class="bi bi-box-seam-fill sidebar-icon"></i>
-
-                <span>Inventory</span>
-
-            </a>
-
-            <!-- SALES HISTORY -->
-            <a
-                href="#"
-                class="sidebar-link
-                {% if request.endpoint == 'sales_history' %}
-                    active
-                {% endif %}"
-            >
-
-                <i class="bi bi-bar-chart-fill sidebar-icon"></i>
-
-                <span>Sales History</span>
-
-            </a>         
-
-            <!-- REORDER RECOMMENDATION -->
-            <a
-                href="#"
-                class="sidebar-link
-                {% if request.endpoint == 'reorder_recommnedation' %}
-                    active
-                {% endif %}"
-            >
-
-                <i class="bi bi-arrow-repeat sidebar-icon"></i>
-
-                <span>Reorder Recommnedations</span>
-
-            </a>            
-            <!-- Suppliers -->
-            <a
-                href="#"
-                class="sidebar-link
-                {% if request.endpoint == 'suppliers' %}
-                    active
-                {% endif %}"
-            >
-
-                <i class="bi bi-truck sidebar-icon"></i>
-
-                <span>Suppliers</span>
-
-            </a>
-            
-            <!-- Receipts / OCR -->
-            <a
-                href="#"
-                class="sidebar-link
-                {% if request.endpoint == 'receipt' %}
-                    active
-                {% endif %}"
-            >
-
-                <i class="bi bi-receipt sidebar-icon"></i>
-
-                <span>Receipts</span>
-
-            </a>
-            
-            <!-- EMPLOYEES -->
-            <a
-                href="#"
-                class="sidebar-link
-                {% if request.endpoint == 'employees' %}
-                    active
-                {% endif %}"
-            >
-
-                <i class="bi bi-people-fill sidebar-icon"></i>
-
-                <span>Employees</span>
-
-            </a>
-            
-            
-
-<!-- REPORTS / ANALYTICS -->
-<a
-    href="{{ url_for('reports') }}"
-    class="sidebar-link
-    {% if request.endpoint == 'reports' %}
-        active
-    {% endif %}"
->
-    <i class="bi bi-file-earmark-bar-graph-fill sidebar-icon"></i>
-    <span>Reports / Analytics</span>
-</a>
-
-            
-            <!-- Settings -->
-            <a
-                href="#"
-                class="sidebar-link
-                {% if request.endpoint == 'settings' %}
-                    active
-                {% endif %}"
-            >
-
-                <i class="bi bi-gear-fill sidebar-icon"></i>
-
-                <span>Settings</span>
-
-            </a>             
+            {% if g.user.role == 'admin' %}
+            <a href="{{ url_for('admin_dashboard') }}" class="sidebar-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}"><i class="bi bi-house-fill sidebar-icon"></i><span>Admin Dashboard</span></a>
+            {% endif %}
+            {% for permission, endpoint, label, icon in [('pos', 'pos', 'POS / Checkout', 'calculator-fill'), ('inventory', 'inventory', 'Inventory', 'box-seam-fill'), ('products', 'product_entry', 'Product Entry', 'plus-circle'), ('suppliers', 'supplier_management', 'Suppliers', 'truck'), ('reports', 'reports', 'Reports / Analytics', 'file-earmark-bar-graph-fill')] %}
+            {% if g.user.has_permission(permission) %}
+            <a href="{{ url_for(endpoint) }}" class="sidebar-link {% if request.endpoint == endpoint %}active{% endif %}"><i class="bi bi-{{ icon }} sidebar-icon"></i><span>{{ label }}</span></a>
+            {% endif %}
+            {% endfor %}
+            {% if g.user.role == 'admin' %}
+            <a href="#" class="sidebar-link {% if request.endpoint == 'sales_history' %}active{% endif %}"><i class="bi bi-bar-chart-fill sidebar-icon"></i><span>Sales History</span></a>
+            <a href="#" class="sidebar-link {% if request.endpoint == 'reorder_recommendation' %}active{% endif %}"><i class="bi bi-arrow-repeat sidebar-icon"></i><span>Reorder Recommendations</span></a>
+            <a href="#" class="sidebar-link {% if request.endpoint == 'receipt' %}active{% endif %}"><i class="bi bi-receipt sidebar-icon"></i><span>Receipts</span></a>
+            {% endif %}
+            {% if g.user.role == 'admin' %}
+            <a href="{{ url_for('employee_management') }}" class="sidebar-link {% if request.endpoint == 'employee_management' %}active{% endif %}"><i class="bi bi-people-fill sidebar-icon"></i><span>Employees</span></a>
+            <a href="#" class="sidebar-link {% if request.endpoint == 'settings' %}active{% endif %}"><i class="bi bi-gear-fill sidebar-icon"></i><span>Settings</span></a>
+            {% endif %}
         </nav>
         
     </aside>

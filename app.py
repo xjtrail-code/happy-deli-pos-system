@@ -3,7 +3,8 @@ from dotenv import load_dotenv
 import secrets
 from pathlib import Path
 
-from models import db
+from models import db, PERMISSIONS, UserPermission
+from sqlalchemy.exc import IntegrityError
 from models import (User, Category, Product, Transaction, TransactionItem, 
                     Inventory, Supplier, SupplierProduct, InventoryAdjustment, 
                     DemandForecast, LowStockAlert, ReorderRecommendation)
@@ -11,7 +12,7 @@ from datetime import date, timedelta
 from functools import wraps
 
 import click
-from flask import Flask, abort, g, redirect, render_template, request, session, url_for
+from flask import Flask, abort, flash, g, redirect, render_template, request, session, url_for
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -98,13 +99,15 @@ PRODUCT_SEED = [
 ]'''
 
 
-def login_required(role=None):
+def login_required(role=None, permission=None):
     def decorate(view):
         @wraps(view)
         def wrapped(*args, **kwargs):
             if g.user is None:
                 return redirect(url_for('home'))
             if role is not None and g.user.role != role:
+                abort(403)
+            if permission and not g.user.has_permission(permission):
                 abort(403)
             return view(*args, **kwargs)
         return wrapped
@@ -123,6 +126,9 @@ app.jinja_env.globals['csrf_token'] = csrf_token
 @app.before_request
 def load_user_and_check_csrf():
     g.user = db.session.get(User, session['user_id']) if 'user_id' in session else None
+    if g.user and not g.user.isActive:
+        session.clear()
+        g.user = None
     if request.method == 'POST':
         token = request.form.get('csrf_token', '')
         expected = session.get('csrf_token', '')
@@ -133,7 +139,7 @@ def load_user_and_check_csrf():
 @app.route('/', methods=['GET', 'POST'])
 def home():
     if g.user:
-        return redirect(url_for('admin_dashboard' if g.user.role == 'admin' else 'pos'))
+        return redirect(url_for('admin_dashboard' if g.user.role == 'admin' else 'workspace'))
     error = None
     if request.method == 'POST':
         username = request.form.get('username', '').strip().lower()
@@ -142,7 +148,7 @@ def home():
             session.clear()
             session['user_id'] = user.id
             session.permanent = True
-            return redirect(url_for('admin_dashboard' if user.role == 'admin' else 'pos'))
+            return redirect(url_for('admin_dashboard' if user.role == 'admin' else 'workspace'))
         error = 'Invalid username or password.'
     return render_template('login.html', error=error), 401 if error else 200
 
@@ -229,7 +235,7 @@ def admin_dashboard():
 
 
 @app.route('/pos')
-@login_required()
+@login_required(permission='pos')
 def pos():
     return render_template('pos.html')
 
@@ -240,7 +246,7 @@ def forgot_password():
 
 
 @app.route('/product-entry', methods=['GET', 'POST'])
-@login_required('admin')
+@login_required(permission='products')
 def product_entry():
     from datetime import datetime
     from decimal import Decimal, InvalidOperation
@@ -339,14 +345,14 @@ def product_entry():
     )
 
 @app.route('/inventory')
-@login_required('admin')
+@login_required(permission='inventory')
 def inventory():
     products = db.session.scalars(db.select(Product).where(Product.isActive.is_(True)).order_by(Product.productName)).all()
     return render_template('inventory.html', products=products)
 
 
 @app.post('/inventory/receive')
-@login_required('admin')
+@login_required(permission='inventory')
 def receive_inventory_stock():
     from datetime import datetime
     try:
@@ -389,6 +395,8 @@ def receive_inventory_stock():
 @app.route('/product-lookup/<barcode>')
 @login_required()
 def product_lookup(barcode):
+    if not any(g.user.has_permission(p) for p in ('pos', 'inventory', 'products')):
+        abort(403)
     product = db.session.scalar(
         db.select(Product).where(Product.barcode == barcode)
     )
@@ -407,7 +415,7 @@ def product_lookup(barcode):
     }
 #no need to delete a product.
 @app.post('/delete-product/<int:product_id>')
-@login_required()
+@login_required(permission='products')
 def delete_product(product_id):
     product = db.session.get(Product, product_id)
 
@@ -446,20 +454,23 @@ def init_db():
 def create_user(username, role, password):
     """Create an account with a password prompted without echoing."""
     username = username.strip().lower()
-    if not username or len(username) > 80:
-        raise click.ClickException('Username must be between 1 and 80 characters.')
+    if not username or len(username) > 50:
+        raise click.ClickException('Username must be between 1 and 50 characters.')
     if len(password) < 12:
         raise click.ClickException('Password must be at least 12 characters.')
     if db.session.scalar(db.select(User).where(User.username == username)):
         raise click.ClickException('Username already exists.')
-    db.session.add(User(username=username, role=role, password_hash=generate_password_hash(password)))
+    user = User(username=username, role=role, email=f'{username}@accounts.invalid',
+                firstName=username, lastName='')
+    user.set_password(password)
+    db.session.add(user)
     db.session.commit()
     click.echo(f'Created {role} account: {username}')
 
 
 
 @app.post('/complete-sale')
-@login_required()
+@login_required(permission='pos')
 def complete_sale():
     import json
     from datetime import datetime
@@ -604,7 +615,7 @@ def complete_sale():
 
 
 @app.route('/reports')
-@login_required('admin')
+@login_required(permission='reports')
 def reports():
     transactions = db.session.scalars(
         db.select(Transaction)
@@ -635,15 +646,85 @@ def reports():
     )
 
    # EMPLOYEE MANAGEMENT
-@app.route('/employee-management')
+@app.route('/workspace')
+@login_required()
+def workspace():
+    return render_template('workspace.html', permissions=PERMISSIONS)
+
+
+@app.cli.command('init-db')
+def initialize_database():
+    """Create missing tables without changing existing accounts or data."""
+    db.create_all()
+    click.echo('Missing database tables created.')
+
+
+@app.route('/employee-management', methods=['GET', 'POST'])
 @login_required('admin')
 def employee_management():
-    return render_template('employee_management.html')
+    error = None
+    if request.method == 'POST':
+        try:
+            action = request.form.get('action')
+            if action not in ('create', 'update'):
+                raise ValueError('Invalid employee action.')
+            employee = User() if action == 'create' else db.get_or_404(User, request.form.get('employee_id', type=int))
+            username = request.form.get('username', '').strip().lower()
+            email = request.form.get('email', '').strip().lower()
+            first_name = request.form.get('first_name', '').strip()
+            last_name = request.form.get('last_name', '').strip()
+            role = request.form.get('role', '')
+            active = request.form.get('is_active') == 'on'
+            selected = set(request.form.getlist('permissions'))
+            password = request.form.get('password', '')
+            if not username or len(username) > 50 or any(c.isspace() for c in username):
+                raise ValueError('Username must contain 1–50 characters with no spaces.')
+            if not email or len(email) > 100 or '@' not in email:
+                raise ValueError('Enter an email address of at most 100 characters.')
+            if not first_name or not last_name or len(first_name) > 50 or len(last_name) > 50:
+                raise ValueError('First and last names are required (50 characters maximum each).')
+            if role not in ('admin', 'cashier') or not selected.issubset(PERMISSIONS):
+                raise ValueError('Select a valid role and permissions.')
+            if (action == 'create' or password) and len(password) < 12:
+                raise ValueError('Passwords must be at least 12 characters.')
+            if password != request.form.get('confirm_password', ''):
+                raise ValueError('Passwords do not match.')
+            if employee.id == g.user.id and (role != 'admin' or not active):
+                raise ValueError('You cannot deactivate or remove your own administrator access.')
+            duplicate = db.session.scalar(db.select(User).where(
+                db.or_(db.func.lower(User.username) == username, db.func.lower(User.email) == email),
+                User.id != employee.id if employee.id else db.true()))
+            if duplicate:
+                raise ValueError('That username or email address is already in use.')
+            employee.username, employee.email = username, email
+            employee.firstName, employee.lastName = first_name, last_name
+            employee.role, employee.isActive = role, active
+            if password:
+                employee.set_password(password)
+            overrides = {entry.permission: entry for entry in employee.permissions}
+            for permission in PERMISSIONS:
+                if permission in overrides:
+                    overrides[permission].allowed = permission in selected
+                else:
+                    employee.permissions.append(UserPermission(permission=permission, allowed=permission in selected))
+            db.session.add(employee)
+            db.session.commit()
+            flash('Employee created.' if action == 'create' else 'Employee updated.', 'success')
+            return redirect(url_for('employee_management'))
+        except ValueError as exc:
+            db.session.rollback()
+            error = str(exc)
+        except IntegrityError:
+            db.session.rollback()
+            error = 'That username or email address is already in use.'
+    employees = db.session.scalars(db.select(User).order_by(User.username)).all()
+    return render_template('employee_management.html', employees=employees,
+                           permissions=PERMISSIONS, error=error), 400 if error else 200
 
 
 # SUPPLIER MANAGEMENT
 @app.route('/supplier-management')
-@login_required('admin')
+@login_required(permission='suppliers')
 def supplier_management():
     return render_template('supplier_management.html')
 

@@ -5,6 +5,21 @@ from sqlalchemy import CheckConstraint
 
 db = SQLAlchemy()
 
+PERMISSIONS = {
+    'pos': 'POS / Checkout',
+    'inventory': 'Inventory (view and receive stock)',
+    'products': 'Add, edit and delete products',
+    'reports': 'Reports / Analytics',
+    'suppliers': 'Supplier Management',
+}
+
+
+class UserPermission(db.Model):
+    __tablename__ = 'user_permissions'
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
+    permission = db.Column(db.String(30), primary_key=True)
+    allowed = db.Column(db.Boolean, nullable=False)
+
 
 class User(db.Model):
     __tablename__ = 'users'
@@ -21,6 +36,17 @@ class User(db.Model):
 
     inventoryAdjustments = db.relationship('InventoryAdjustment', backref='user', lazy=True)
     transactions = db.relationship('Transaction', backref='user', lazy=True)
+    permissions = db.relationship('UserPermission', cascade='all, delete-orphan', lazy=True)
+
+    def has_permission(self, permission):
+        if not self.isActive or permission not in PERMISSIONS:
+            return False
+        if self.role == 'admin':
+            return True
+        for override in self.permissions:
+            if override.permission == permission:
+                return override.allowed
+        return permission == 'pos'
 
     def set_password(self, password):
         self.passwordHash = generate_password_hash(password)
