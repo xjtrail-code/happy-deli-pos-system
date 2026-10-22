@@ -78,6 +78,8 @@
                 ('inventory', 'inventory', 'Inventory', 'box-seam-fill'),
                 ('products', 'product_entry', 'Product Entry', 'plus-circle'),
                 ('suppliers', 'supplier_management', 'Suppliers', 'truck'),
+                ('reorders', 'reorder_recommendation', 'Reorder Recommendations', 'arrow-repeat'),
+                ('receipts', 'receipts', 'Receipts', 'receipt'),
                 ('reports', 'reports', 'Reports / Analytics', 'file-earmark-bar-graph-fill')
             ] %}
                 {% if g.user.has_permission(permission) %}
@@ -89,13 +91,6 @@
             {% endfor %}
 
             {% if g.user.role == 'admin' %}
-            <!-- These three links remain placeholders until their Flask routes are ready. -->
-            <a href="#" class="sidebar-link {% if request.endpoint == 'reorder_recommendation' %}active{% endif %}">
-                <i class="bi bi-arrow-repeat sidebar-icon"></i><span>Reorder Recommendations</span>
-            </a>
-            <a href="#" class="sidebar-link {% if request.endpoint == 'receipt' %}active{% endif %}">
-                <i class="bi bi-receipt sidebar-icon"></i><span>Receipts</span>
-            </a>
 
             <a href="{{ url_for('employee_management') }}"
                class="sidebar-link {% if request.endpoint == 'employee_management' %}active{% endif %}">

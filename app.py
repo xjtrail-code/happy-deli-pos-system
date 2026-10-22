@@ -6,7 +6,7 @@ from pathlib import Path
 from datetime import datetime
 from decimal import Decimal, InvalidOperation   
 
-from models import db, PERMISSIONS, UserPermission
+from models import db, PERMISSIONS, UserPermission, PurchaseReceipt, PurchaseReceiptItem
 from sqlalchemy.exc import IntegrityError
 from models import (User, Category, Product, Transaction, TransactionItem, 
                     Inventory, Supplier, SupplierProduct, InventoryAdjustment, 
@@ -750,6 +750,129 @@ def employee_management():
 def settings():
     return render_template('settings.html')
 
+
+
+@app.route('/purchase-receipts', methods=['GET', 'POST'])
+@login_required(permission='receipts')
+def purchase_receipts():
+    if request.method == 'POST':
+        if not g.user.has_permission('purchase_receipts'):
+            abort(403)
+        try:
+            supplier = db.get_or_404(Supplier, request.form.get('supplier_id', type=int))
+            reference = request.form.get('reference', '').strip()
+            if not reference or len(reference) > 100:
+                raise ValueError('Enter a supplier receipt reference (100 characters maximum).')
+            products = request.form.getlist('product_id')
+            quantities = request.form.getlist('quantity')
+            costs = request.form.getlist('unit_cost')
+            if not products or len(products) > 100 or not len(products) == len(quantities) == len(costs):
+                raise ValueError('Enter between 1 and 100 complete receipt lines.')
+            receipt_record = PurchaseReceipt(supplier_id=supplier.supplierID, reference=reference, user_id=g.user.id)
+            db.session.add(receipt_record)
+            for product_id, quantity, cost in zip(products, quantities, costs):
+                product = db.get_or_404(Product, int(product_id))
+                quantity = int(quantity)
+                cost = Decimal(cost)
+                if not product.isActive or not 1 <= quantity <= 1_000_000 or not cost.is_finite() or not 0 <= cost <= Decimal('99999999.99') or cost != cost.quantize(Decimal('0.01')):
+                    raise ValueError('Use active products, positive whole quantities, and nonnegative costs with at most two decimal places.')
+                receipt_record.items.append(PurchaseReceiptItem(product_id=product.id, quantity=quantity, unit_cost=cost))
+                stock = db.session.scalar(db.select(Inventory).where(Inventory.productId == product.id).with_for_update())
+                if stock is None:
+                    stock = Inventory(productId=product.id, quantityOnHand=0, reorderThreshold=0, reorderQuantity=0)
+                    db.session.add(stock)
+                stock.quantityOnHand += quantity
+                stock.lastUpdated = datetime.now()
+                db.session.add(InventoryAdjustment(productId=product.id, userId=g.user.id,
+                    quantityChanged=quantity, adjustmentType='addition', reason=f'Supplier receipt: {reference}'))
+            db.session.commit()
+            flash('Supplier receipt saved and inventory updated.', 'success')
+            return redirect(url_for('purchase_receipts'))
+        except (ValueError, InvalidOperation):
+            db.session.rollback()
+            flash('Check the receipt reference, product lines, quantities and unit costs. No stock was received.', 'danger')
+        except IntegrityError:
+            db.session.rollback()
+            flash('This supplier receipt reference is already recorded. No stock was received.', 'danger')
+    page = db.paginate(db.select(PurchaseReceipt).order_by(PurchaseReceipt.received_at.desc(), PurchaseReceipt.id.desc()), per_page=25)
+    return render_template('purchase_receipts.html', page=page,
+        suppliers=db.session.scalars(db.select(Supplier).order_by(Supplier.supplierName)).all(),
+        products=db.session.scalars(db.select(Product).where(Product.isActive.is_(True)).order_by(Product.productName)).all())
+
+
+@app.route('/receipts')
+@login_required(permission='receipts')
+def receipts():
+    query = db.select(Transaction).order_by(Transaction.transactionDate.desc(), Transaction.transactionID.desc())
+    receipt_id = request.args.get('receipt_id', '').strip()
+    if receipt_id:
+        try:
+            query = query.where(Transaction.transactionID == int(receipt_id))
+        except ValueError:
+            abort(400, description='Receipt number must be a whole number.')
+    page = db.paginate(query, per_page=25, max_per_page=25)
+    return render_template('receipts.html', page=page, receipt_id=receipt_id)
+
+
+@app.route('/receipts/<int:transaction_id>')
+@login_required(permission='receipts')
+def receipt(transaction_id):
+    transaction = db.get_or_404(Transaction, transaction_id)
+    return render_template('receipt.html', transaction=transaction)
+
+
+@app.route('/reorder-recommendations', methods=['GET', 'POST'])
+@login_required(permission='reorders')
+def reorder_recommendation():
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'generate':
+            stocks = db.session.scalars(db.select(Inventory).join(Product).where(
+                Product.isActive.is_(True),
+                Inventory.quantityOnHand <= Inventory.reorderThreshold)).all()
+            created = 0
+            missing = 0
+            for stock in stocks:
+                existing = db.session.scalar(db.select(ReorderRecommendation).where(
+                    ReorderRecommendation.productId == stock.productId,
+                    ReorderRecommendation.status.in_(['pending', 'approved', 'ordered'])))
+                if existing:
+                    continue
+                offer = db.session.scalar(db.select(SupplierProduct).where(
+                    SupplierProduct.productId == stock.productId).order_by(
+                    SupplierProduct.isPrefered.desc(), SupplierProduct.unitCost,
+                    SupplierProduct.id))
+                if not offer:
+                    missing += 1
+                    continue
+                quantity = max(stock.reorderQuantity,
+                               stock.reorderThreshold + 1 - stock.quantityOnHand,
+                               offer.minimumOrderQuantity)
+                db.session.add(ReorderRecommendation(
+                    productId=stock.productId, supplierId=offer.supplierId,
+                    recommendedQuantity=quantity, recommendedOrderDate=datetime.now(),
+                    estimatedUnitCost=offer.unitCost, status='pending'))
+                created += 1
+            db.session.commit()
+            flash(f'Created {created} recommendations. {missing} low-stock products need a linked supplier.', 'success')
+        elif action in ('approve', 'order', 'complete', 'cancel'):
+            recommendation = db.get_or_404(ReorderRecommendation, request.form.get('recommendation_id', type=int))
+            transitions = {'approve': ('pending', 'approved'), 'order': ('approved', 'ordered'),
+                           'complete': ('ordered', 'completed')}
+            if action == 'cancel' and recommendation.status in ('pending', 'approved'):
+                recommendation.status = 'cancelled'
+            elif action in transitions and recommendation.status == transitions[action][0]:
+                recommendation.status = transitions[action][1]
+            else:
+                abort(400, description='This recommendation cannot make that status change.')
+            db.session.commit()
+            flash('Recommendation updated.', 'success')
+        else:
+            abort(400, description='Unknown recommendation action.')
+        return redirect(url_for('reorder_recommendation'))
+    recommendations = db.session.scalars(db.select(ReorderRecommendation).order_by(
+        ReorderRecommendation.createdDate.desc(), ReorderRecommendation.id.desc())).all()
+    return render_template('reorder_recommendations.html', recommendations=recommendations)
 
 
 # SUPPLIER MANAGEMENT

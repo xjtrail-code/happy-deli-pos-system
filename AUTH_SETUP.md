@@ -28,7 +28,24 @@ role, activate or deactivate it, and change individual permissions:
 - Inventory, including viewing products and receiving stock.
 - Product entry, including adding, editing, and deleting products.
 - Reports / Analytics.
-- Supplier Management (the supplier page is currently a placeholder).
+- Supplier Management.
+- Reorder Recommendations: generate low-stock suggestions and track approval,
+  ordering, and completion. Generation prefers the preferred supplier, then
+  lowest cost, and respects supplier minimum quantities. Products without a
+  supplier link are skipped. Actions record status; place orders with the supplier
+  separately and record delivered stock before marking the recommendation complete.
+- Receipts: view customer sales and supplier purchases, and print sales receipts.
+- Record supplier receipts and receive stock: requires Receipts access as well.
+  Save a supplier reference and item quantities/costs to record the purchase and
+  update inventory together. Do not also receive those same units through Inventory.
+  Supplier reference numbers are unique per supplier to prevent duplicate receiving.
+  Supplier totals are item costs before tax and fees; attachment upload and OCR
+  are not included.
+
+Run `init-db` when upgrading to create the `purchase_receipts` and
+`purchase_receipt_items` tables. No existing records are removed. Customer receipts
+use existing POS transactions and their saved prices. Supplier receipts are entered
+manually in the Supplier purchases section of Receipts.
 
 Administrators always have full access, including employee management. Employees
 cannot manage accounts or grant themselves permissions. Changes apply on the next

@@ -1,0 +1,14 @@
+﻿{% extends 'base.html' %}
+{% block title %}Receipts | Happy Deli Junco{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+  <h1>Receipts</h1>
+  <nav class="nav nav-pills mb-4" aria-label="Receipt types"><a class="nav-link active" href="{{ url_for('receipts') }}">Customer sales</a><a class="nav-link" href="{{ url_for('purchase_receipts') }}">Supplier purchases</a></nav>
+  <p class="text-muted">Find and print customer receipts from POS transactions.</p>
+  <form method="get" class="d-flex gap-2 mb-4"><label class="visually-hidden" for="receipt-number">Receipt number</label><input id="receipt-number" class="form-control w-auto" type="number" min="1" name="receipt_id" placeholder="Receipt number" value="{{ receipt_id }}"><button class="btn btn-primary">Search</button><a class="btn btn-outline-secondary" href="{{ url_for('receipts') }}">Clear</a></form>
+  <div class="table-responsive"><table class="table table-striped"><thead><tr><th>Receipt</th><th>Date</th><th>Cashier</th><th>Payment</th><th>Status</th><th>Total</th><th></th></tr></thead><tbody>
+  {% for t in page.items %}<tr><td>#{{ t.transactionID }}</td><td>{{ t.transactionDate.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ t.user.username }}</td><td>{{ t.paymentMethod|title }}</td><td>{{ t.status|title }}</td><td>${{ '%.2f'|format(t.totalAmount) }}</td><td><a href="{{ url_for('receipt', transaction_id=t.transactionID) }}">View receipt</a></td></tr>{% else %}<tr><td colspan="7">No receipts found.</td></tr>{% endfor %}
+  </tbody></table></div>
+  <nav aria-label="Receipt pages">{% if page.has_prev %}<a class="btn btn-outline-secondary" href="{{ url_for('receipts', page=page.prev_num, receipt_id=receipt_id) }}">Previous</a>{% endif %} <span>Page {{ page.page }} of {{ page.pages or 1 }}</span> {% if page.has_next %}<a class="btn btn-outline-secondary" href="{{ url_for('receipts', page=page.next_num, receipt_id=receipt_id) }}">Next</a>{% endif %}</nav>
+</div>
+{% endblock %}

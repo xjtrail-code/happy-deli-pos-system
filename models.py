@@ -11,6 +11,9 @@ PERMISSIONS = {
     'products': 'Add, edit and delete products',
     'reports': 'Reports / Analytics',
     'suppliers': 'Supplier Management',
+    'reorders': 'Reorder Recommendations',
+    'receipts': 'View customer and supplier receipts; print sales receipts',
+    'purchase_receipts': 'Record supplier receipts and receive stock',
 }
 
 
@@ -19,6 +22,34 @@ class UserPermission(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
     permission = db.Column(db.String(30), primary_key=True)
     allowed = db.Column(db.Boolean, nullable=False)
+
+
+class PurchaseReceipt(db.Model):
+    __tablename__ = 'purchase_receipts'
+    id = db.Column(db.Integer, primary_key=True)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.supplierID'), nullable=False)
+    reference = db.Column(db.String(100), nullable=False)
+    received_at = db.Column(db.DateTime, nullable=False, default=datetime.now)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    supplier = db.relationship('Supplier')
+    user = db.relationship('User')
+    items = db.relationship('PurchaseReceiptItem', cascade='all, delete-orphan')
+    __table_args__ = (db.UniqueConstraint('supplier_id', 'reference'),)
+
+    @property
+    def total(self):
+        return sum(item.quantity * item.unit_cost for item in self.items)
+
+
+class PurchaseReceiptItem(db.Model):
+    __tablename__ = 'purchase_receipt_items'
+    id = db.Column(db.Integer, primary_key=True)
+    receipt_id = db.Column(db.Integer, db.ForeignKey('purchase_receipts.id'), nullable=False)
+    product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    unit_cost = db.Column(db.Numeric(10, 2), nullable=False)
+    product = db.relationship('Product')
+    __table_args__ = (db.CheckConstraint('quantity > 0'), db.CheckConstraint('unit_cost >= 0'),)
 
 
 class User(db.Model):
