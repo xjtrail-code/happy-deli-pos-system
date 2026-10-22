@@ -90,9 +90,6 @@
 
             {% if g.user.role == 'admin' %}
             <!-- These three links remain placeholders until their Flask routes are ready. -->
-            <a href="#" class="sidebar-link {% if request.endpoint == 'sales_history' %}active{% endif %}">
-                <i class="bi bi-bar-chart-fill sidebar-icon"></i><span>Sales History</span>
-            </a>
             <a href="#" class="sidebar-link {% if request.endpoint == 'reorder_recommendation' %}active{% endif %}">
                 <i class="bi bi-arrow-repeat sidebar-icon"></i><span>Reorder Recommendations</span>
             </a>
