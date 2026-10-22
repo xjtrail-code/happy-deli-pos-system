@@ -1,22 +1,624 @@
 
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Supplier Management</title>
-</head>
-<body>
 
-    <h1>Supplier Management</h1>
+{% extends "base.html" %}
 
-    <h2>Coming Soon!</h2>
+{% block title %}Supplier Management | Happy Deli Junco{% endblock %}
 
-    <p>This feature is currently under development.</p>
+{% block content %}
 
-    <a href="{{ url_for('admin_dashboard') }}">
-        <button type="button">Back to Dashboard</button>
-    </a>
+<div class="container-fluid py-4 supplier-page">
 
-</body>
-</html>
+    <div class="supplier-heading">
+        <div>
+            <h1>
+                <i class="bi bi-truck me-2"></i>
+                Supplier Management
+            </h1>
+            <p class="text-muted mb-0">
+                Manage vendors, contact information, and reorder schedules.
+            </p>
+        </div>
+
+        <button class="btn btn-primary px-4"
+                data-bs-toggle="modal"
+                data-bs-target="#addSupplierModal">
+            <i class="bi bi-plus-lg me-2"></i>
+            Add Supplier
+        </button>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }}" role="alert">
+            {{ message }}
+        </div>
+        {% endfor %}
+    {% endwith %}
+
+    <!-- SUMMARY -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-4">
+            <div class="supplier-card">
+                <p class="text-muted mb-2">Total Suppliers</p>
+                <div class="number">{{ suppliers|length }}</div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+            <div class="supplier-card">
+                <p class="text-muted mb-2">Suppliers With Contact Info</p>
+                <div class="number">
+                    {{ suppliers|selectattr('phone')|list|length }}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-4">
+            <div class="supplier-card">
+                <p class="text-muted mb-2">Products Linked</p>
+                <div class="number">{{ linked_products }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DIRECTORY -->
+    <div class="supplier-table-card supplier-directory">
+
+        <div class="p-3 border-bottom">
+            <div class="row align-items-center g-3">
+                <div class="col-12 col-md-6">
+                    <h5 class="fw-bold mb-0">Supplier Directory</h5>
+                </div>
+                <div class="col-12 col-md-6">
+                    <input type="search"
+                           id="supplierSearch"
+                           class="form-control supplier-search"
+                           placeholder="Search suppliers...">
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table supplier-table mb-0">
+                <thead>
+                    <tr>
+                        <th>Supplier Name</th>
+                        <th>Contact Person</th>
+                        <th>Phone</th>
+                        <th>Email</th>
+                        <th>Reorder Frequency</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+
+                <tbody id="supplierTableBody">
+                    {% for supplier in suppliers %}
+                    <tr class="supplier-row">
+                        <td class="fw-semibold">
+                            {{ supplier.supplierName }}
+                        </td>
+                        <td>{{ supplier.contactName or '—' }}</td>
+                        <td>{{ supplier.phone or '—' }}</td>
+                        <td>{{ supplier.email or '—' }}</td>
+                        <td>
+                            Every {{ supplier.reorderFreqDays }} days
+                        </td>
+                        <td class="supplier-actions-cell">
+                            <div class="supplier-actions">
+                                <button type="button" class="supplier-icon-button"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editSupplier{{ supplier.supplierID }}"
+                                        aria-label="Edit {{ supplier.supplierName }}"
+                                        title="Edit supplier">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <div class="dropdown">
+                                    <button type="button" class="supplier-icon-button"
+                                            data-bs-toggle="dropdown" aria-expanded="false"
+                                            aria-label="More actions for {{ supplier.supplierName }}"
+                                            title="More actions">
+                                        <i class="bi bi-three-dots"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                        <li>
+                                            <button type="button" class="dropdown-item"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#supplierDetails{{ supplier.supplierID }}">
+                                                <i class="bi bi-eye me-2"></i>View details
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button type="button" class="dropdown-item"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#supplierProducts{{ supplier.supplierID }}">
+                                                <i class="bi bi-box-seam me-2"></i>Manage products
+                                            </button>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <form method="POST" action="{{ url_for('supplier_management') }}"
+                                                  onsubmit="return confirm('Delete this supplier?');">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <input type="hidden" name="action" value="delete_supplier">
+                                                <input type="hidden" name="supplier_id" value="{{ supplier.supplierID }}">
+                                                <button type="submit" class="dropdown-item text-danger">
+                                                    <i class="bi bi-trash me-2"></i>Delete supplier
+                                                </button>
+                                            </form>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-5">
+                            No suppliers added yet.
+                            Click Add Supplier to get started.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p id="supplierNoResults"
+           class="text-center text-muted py-4 mb-0 d-none">
+            No matching suppliers found.
+        </p>
+    </div>
+
+<!-- PRICE COMPARISON -->
+<div class="supplier-table-card mt-4">
+    <div class="p-3 border-bottom">
+        <h5 class="fw-bold mb-0">Supplier Price Comparison</h5>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table supplier-table mb-0">
+            <thead>
+                <tr>
+                    <th>Product</th>
+                    <th>Supplier</th>
+                    <th>Unit Cost</th>
+                    <th>Preferred</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product_id, offers in comparisons.items() %}
+                    {% for offer in offers %}
+                    <tr>
+                        <td>{{ offer.product.productName }}</td>
+                        <td>{{ offer.supplier.supplierName }}</td>
+                        <td>
+                            ${{ "%.2f"|format(offer.unitCost) }}
+                            {% if offer.unitCost == (offers|map(attribute='unitCost')|min) %}
+                            <span class="badge bg-success">Lowest</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ 'Yes' if offer.isPrefered else 'No' }}</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted py-4">
+                        Link a product to multiple suppliers to compare prices.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+</div> <!-- End supplier-page -->
+
+<!-- ADD SUPPLIER MODAL -->
+<div class="modal fade" id="addSupplierModal"
+     tabindex="-1" aria-labelledby="addSupplierTitle"
+     aria-hidden="true">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content supplier-modal">
+
+          
+<form method="POST"
+      action="{{ url_for('supplier_management') }}">
+
+    <input type="hidden"
+           name="csrf_token"
+           value="{{ csrf_token() }}">
+
+    <input type="hidden"
+           name="action"
+           value="add_supplier">
+
+
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="addSupplierTitle">
+                        <i class="bi bi-truck me-2"></i>
+                        Add New Supplier
+                    </h5>
+                    <button type="button" class="btn-close"
+                            data-bs-dismiss="modal"
+                            aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label">Supplier Name *</label>
+                            <input name="supplier_name"
+                                   class="form-control"
+                                   maxlength="150" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Contact Person</label>
+                            <input name="contact_name"
+                                   class="form-control" maxlength="100">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Phone Number</label>
+                            <input name="phone"
+                                   type="tel" class="form-control"
+                                   maxlength="30">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Email Address</label>
+                            <input name="email"
+                                   type="email" class="form-control"
+                                   maxlength="100">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Street Address</label>
+                            <input name="address"
+                                   class="form-control" maxlength="255">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">City</label>
+                            <input name="city"
+                                   class="form-control" maxlength="100">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">State</label>
+                            <input name="state"
+                                   class="form-control" maxlength="50">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">
+                                Reorder Frequency (Days) *
+                            </label>
+                            <input name="reorder_frequency"
+                                   type="number"
+                                   min="1" step="1"
+                                   value="7"
+                                   class="form-control"
+                                   required>
+                            <div class="form-text">
+                                Example: 7 for weekly, 14 for every two weeks.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">
+                        Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i>
+                        Save Supplier
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- SUPPLIER DETAILS -->
+{% for supplier in suppliers %}
+
+<div class="modal fade"
+     id="editSupplier{{ supplier.supplierID }}"
+     tabindex="-1">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content supplier-modal">
+
+            <form method="POST"
+                  action="{{ url_for('supplier_management') }}">
+
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="edit_supplier">
+                <input type="hidden" name="supplier_id" value="{{ supplier.supplierID }}">
+
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold">Edit Supplier</h5>
+                    <button type="button" class="btn-close"
+                            data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label">Supplier Name</label>
+                            <input name="supplier_name" class="form-control"
+                                   maxlength="150"
+                                   value="{{ supplier.supplierName }}" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Contact Person</label>
+                            <input name="contact_name" class="form-control"
+                                   maxlength="100"
+                                   value="{{ supplier.contactName or '' }}">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Phone</label>
+                            <input name="phone" class="form-control"
+                                   maxlength="30"
+                                   value="{{ supplier.phone or '' }}">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input name="email" type="email" class="form-control"
+                                   maxlength="100"
+                                   value="{{ supplier.email or '' }}">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Address</label>
+                            <input name="address" class="form-control"
+                                   maxlength="255"
+                                   value="{{ supplier.address or '' }}">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">City</label>
+                            <input name="city" class="form-control"
+                                   maxlength="100"
+                                   value="{{ supplier.city or '' }}">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">State</label>
+                            <input name="state" class="form-control"
+                                   maxlength="50"
+                                   value="{{ supplier.state or '' }}">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Reorder Frequency (Days)</label>
+                            <input name="reorder_frequency" type="number"
+                                   class="form-control" min="1" max="3650"
+                                   value="{{ supplier.reorderFreqDays }}" required>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        Save Changes
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade"
+     id="supplierDetails{{ supplier.supplierID }}"
+     tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    {{ supplier.supplierName }}
+                </h5>
+                <button type="button" class="btn-close"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Contact:</strong> {{ supplier.contactName or '—' }}</p>
+                <p><strong>Phone:</strong> {{ supplier.phone or '—' }}</p>
+                <p><strong>Email:</strong> {{ supplier.email or '—' }}</p>
+                <p><strong>Address:</strong>
+                    {{ supplier.address or '—' }}
+                    {{ supplier.city or '' }}
+                    {{ supplier.state or '' }}
+                </p>
+                <p><strong>Reorder:</strong>
+                    Every {{ supplier.reorderFreqDays }} days
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade"
+     id="supplierProducts{{ supplier.supplierID }}"
+     tabindex="-1">
+
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content supplier-modal">
+
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    Products — {{ supplier.supplierName }}
+                </h5>
+                <button type="button" class="btn-close"
+                        data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body p-4">
+
+                <h6 class="fw-bold">Linked Products</h6>
+
+                <div class="table-responsive mb-4">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Unit Cost</th>
+                                <th>Preferred</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for link in links_by_supplier.get(supplier.supplierID, []) %}
+                            <tr>
+                                <td>{{ link.product.productName }}</td>
+                                <td>${{ "%.2f"|format(link.unitCost) }}</td>
+                                <td>{{ 'Yes' if link.isPrefered else 'No' }}</td>
+                                <td>
+                                    <form method="POST"
+                                          action="{{ url_for('supplier_management') }}"
+                                          onsubmit="return confirm('Remove this product link?');">
+
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="action" value="remove_product">
+                                        <input type="hidden" name="supplier_id" value="{{ supplier.supplierID }}">
+                                        <input type="hidden" name="product_id" value="{{ link.productId }}">
+
+                                        <button class="btn btn-outline-danger btn-sm">
+                                            Remove
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-muted">
+                                    No products linked yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <h6 class="fw-bold">Add or Update Product</h6>
+
+                <form method="POST"
+                      action="{{ url_for('supplier_management') }}"
+                      class="supplier-product-form">
+
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="add_product">
+                    <input type="hidden" name="supplier_id" value="{{ supplier.supplierID }}">
+
+                    <div class="row g-3">
+
+                        <div class="col-12">
+                            <label class="form-label">Product</label>
+                            <select name="product_id"
+                                    class="form-select supplier-product-select"
+                                    data-existing="{{ links_by_supplier.get(supplier.supplierID, [])|map(attribute='productId')|list|tojson|forceescape }}"
+                                    required>
+                                <option value="">Choose Product</option>
+                                {% for product in products %}
+                                <option value="{{ product.id }}">
+                                    {{ product.productName }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Unit Cost ($)</label>
+                            <input name="unit_cost" type="number"
+                                   step="0.01" min="0"
+                                   class="form-control" required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Minimum Order</label>
+                            <input name="minimum_order_quantity"
+                                   type="number" min="1"
+                                   value="1" class="form-control" required>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Lead Time (Days)</label>
+                            <input name="lead_time_days"
+                                   type="number" min="0"
+                                   value="0" class="form-control" required>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-check-label">
+                                <input type="checkbox" name="preferred"
+                                       class="form-check-input me-2">
+                                Preferred Supplier
+                            </label>
+                        </div>
+
+                    </div>
+
+                    <button type="submit" class="btn btn-primary mt-3">
+                        Save Product
+                    </button>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+const supplierSearch = document.getElementById("supplierSearch");
+
+supplierSearch.addEventListener("input", function () {
+    const search = this.value.toLowerCase().trim();
+    const rows = document.querySelectorAll(".supplier-row");
+    let visible = 0;
+
+    rows.forEach(row => {
+        const match = row.textContent.toLowerCase().includes(search);
+        row.classList.toggle("d-none", !match);
+        if (match) visible++;
+    });
+
+    document.getElementById("supplierNoResults")
+        .classList.toggle("d-none", visible !== 0 || search === "");
+});
+
+document.querySelectorAll(".supplier-product-select").forEach(select => {
+    const existing = JSON.parse(select.dataset.existing || "[]").map(String);
+    const form = select.closest("form");
+    const actionInput = form.querySelector('input[name="action"]');
+
+    function updateAction() {
+        actionInput.value = existing.includes(select.value)
+            ? "edit_product"
+            : "add_product";
+    }
+
+    select.addEventListener("change", updateAction);
+    updateAction();
+});
+
+</script>
+{% endblock %}

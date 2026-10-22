@@ -3,6 +3,9 @@ from dotenv import load_dotenv
 import secrets
 from pathlib import Path
 
+from datetime import datetime
+from decimal import Decimal, InvalidOperation   
+
 from models import db, PERMISSIONS, UserPermission
 from sqlalchemy.exc import IntegrityError
 from models import (User, Category, Product, Transaction, TransactionItem, 
@@ -166,72 +169,91 @@ def logout():
     return redirect(url_for('dashboard'))'''
 
 
-
 @app.route('/admin-dashboard')
 @login_required('admin')
 def admin_dashboard():
     from datetime import datetime, date, timedelta
 
-    # Get today's completed transactions
     today = date.today()
-
-    transactions = db.session.scalars(
-        db.select(Transaction)
-        .where(Transaction.status == 'completed')
-        .where(Transaction.transactionDate >= datetime.combine(today, datetime.min.time()))
-        .where(Transaction.transactionDate < datetime.combine(
-            date.fromordinal(today.toordinal() + 1),
-            datetime.min.time()
-        ))
-    ).all()
-
-    # Calculate today's totals
-    todays_sales = round(float(sum(t.totalAmount for t in transactions)), 2)
-    todays_transactions = len(transactions)
-    start_of_day = datetime.combine(
-        today, datetime.min.time()
-    )
+    start_of_day = datetime.combine(today, datetime.min.time())
     end_of_day = start_of_day + timedelta(days=1)
 
-    '''# TEMPORARY DEBUGGING
-    print("Dashboard date:", today)
+    # Get all completed transactions from the last 7 days
+    start_of_week = start_of_day - timedelta(days=6)
 
-    all_sales = db.session.scalars(
-        db.select(Sale)
+    recent_transactions = db.session.scalars(
+        db.select(Transaction)
+        .where(Transaction.status == 'completed')
+        .where(Transaction.transactionDate >= start_of_week)
+        .where(Transaction.transactionDate < end_of_day)
+        .order_by(Transaction.transactionDate.asc())
     ).all()
 
-    print("All sales:", [
-        (sale.id, sale.created_at, sale.total)
-        for sale in all_sales
-    ])
+    # Today's completed transactions
+    todays_transactions_list = [
+        t for t in recent_transactions
+        if start_of_day <= t.transactionDate < end_of_day
+    ]
 
-    # Retrieve today's sales
-    sales = db.session.scalars(
-        db.select(Sale)
-        .where(Sale.created_at >= start_of_day)
-        .where(Sale.created_at < end_of_day)
-    ).all()
-
-    # Calculate today's totals
     todays_sales = round(
-        sum(sale.total for sale in sales), 2
+        float(sum(t.totalAmount for t in todays_transactions_list)),
+        2
     )
-    todays_transactions = len(sales)
-'''
-    # Count products at or below their reorder threshold
+
+    todays_transactions = len(todays_transactions_list)
+
+    # Seven-day sales chart
+    sales_labels = []
+    sales_data = []
+
+    for days_ago in range(6, -1, -1):
+        current_day = today - timedelta(days=days_ago)
+
+        daily_total = sum(
+            t.totalAmount for t in recent_transactions
+            if t.transactionDate.date() == current_day
+        )
+
+        sales_labels.append(current_day.strftime('%a'))
+        sales_data.append(round(float(daily_total), 2))
+
+    # Cash vs Card breakdown for the last 7 days
+    cash_sales = round(
+        float(sum(
+            t.totalAmount for t in recent_transactions
+            if t.paymentMethod == 'cash'
+        )),
+        2
+    )
+
+    card_sales = round(
+        float(sum(
+            t.totalAmount for t in recent_transactions
+            if t.paymentMethod in ('credit', 'debit')
+        )),
+        2
+    )
+
+    # Inventory alerts
     low_stock_alerts = db.session.scalar(
         db.select(db.func.count(Inventory.id))
-        .where(Inventory.quantityOnHand <= Inventory.reorderThreshold)
+        .where(
+            Inventory.quantityOnHand <= Inventory.reorderThreshold
+        )
     ) or 0
 
-    # Send data to dashboard
     return render_template(
         'admin_dashboard.html',
         todays_sales=todays_sales,
         todays_transactions=todays_transactions,
         low_stock_alerts=low_stock_alerts,
-        profit_margin=None
+        profit_margin=None,
+        sales_labels=sales_labels,
+        sales_data=sales_data,
+        cash_sales=cash_sales,
+        card_sales=card_sales
     )
+
 
 
 @app.route('/pos')
@@ -722,11 +744,269 @@ def employee_management():
                            permissions=PERMISSIONS, error=error), 400 if error else 200
 
 
+#settings
+@app.route('/settings')
+@login_required('admin')
+def settings():
+    return render_template('settings.html')
+
+
+
 # SUPPLIER MANAGEMENT
-@app.route('/supplier-management')
+
+@app.route('/supplier-management', methods=['GET', 'POST'])
 @login_required(permission='suppliers')
 def supplier_management():
-    return render_template('supplier_management.html')
+
+    if request.method == 'POST':
+        action = request.form.get('action', '')
+
+        try:
+            if action in ('add_supplier', 'edit_supplier'):
+                name = request.form.get('supplier_name', '').strip()
+                frequency = int(request.form.get('reorder_frequency', '0'))
+
+                if not name or len(name) > 150 or not 1 <= frequency <= 3650:
+                    raise ValueError(
+                        'Enter a supplier name and reorder frequency between 1 and 3650 days.'
+                    )
+
+                fields = {
+                    'contactName': request.form.get('contact_name', '').strip(),
+                    'phone': request.form.get('phone', '').strip(),
+                    'email': request.form.get('email', '').strip(),
+                    'address': request.form.get('address', '').strip(),
+                    'city': request.form.get('city', '').strip(),
+                    'state': request.form.get('state', '').strip(),
+                }
+
+                limits = {
+                    'contactName': 100,
+                    'phone': 30,
+                    'email': 100,
+                    'address': 255,
+                    'city': 100,
+                    'state': 50
+                }
+
+                if any(len(value) > limits[key] for key, value in fields.items()):
+                    raise ValueError('One of the supplier contact fields is too long.')
+
+                if action == 'edit_supplier':
+                    supplier = db.get_or_404(
+                        Supplier,
+                        int(request.form['supplier_id'])
+                    )
+                    supplier.updateAt = datetime.now()
+                else:
+                    supplier = Supplier()
+
+                supplier.supplierName = name
+                supplier.reorderFreqDays = frequency
+
+                for key, value in fields.items():
+                    setattr(supplier, key, value or None)
+
+                db.session.add(supplier)
+                flash('Supplier saved successfully.', 'success')
+
+            elif action == 'delete_supplier':
+                supplier = db.get_or_404(
+                    Supplier,
+                    int(request.form['supplier_id'])
+                )
+
+                if supplier.supplierProducts or supplier.reorderRecommendations:
+                    raise ValueError(
+                        'This supplier has linked products or reorder records. '
+                        'Remove or resolve those records before deleting.'
+                    )
+
+                db.session.delete(supplier)
+                flash('Supplier deleted successfully.', 'success')
+
+            elif action in ('add_product', 'edit_product'):
+                supplier = db.get_or_404(
+                    Supplier,
+                    int(request.form['supplier_id'])
+                )
+
+                product = db.get_or_404(
+                    Product,
+                    int(request.form['product_id'])
+                )
+
+                link = db.session.scalar(
+                    db.select(SupplierProduct).where(
+                        SupplierProduct.supplierId == supplier.supplierID,
+                        SupplierProduct.productId == product.id
+                    )
+                )
+
+                if action == 'add_product' and link:
+                    raise ValueError(
+                        'This product is already linked to the supplier.'
+                    )
+
+                if action == 'edit_product' and not link:
+                    raise ValueError('Supplier product link not found.')
+
+                cost = Decimal(request.form.get('unit_cost', '').strip())
+                minimum = int(request.form.get('minimum_order_quantity', ''))
+                lead = int(request.form.get('lead_time_days', ''))
+
+                if (
+                    not cost.is_finite()
+                    or cost < 0
+                    or cost > Decimal('99999999.99')
+                    or cost.as_tuple().exponent < -2
+                    or minimum < 1
+                    or lead < 0
+                ):
+                    raise ValueError(
+                        'Enter a valid cost (two decimal places), '
+                        'minimum quantity, and lead time.'
+                    )
+
+                preferred = request.form.get('preferred') == 'on'
+
+                if preferred:
+                    other_links = db.session.scalars(
+                        db.select(SupplierProduct).where(
+                            SupplierProduct.productId == product.id
+                        )
+                    ).all()
+
+                    for other in other_links:
+                        other.isPrefered = False
+
+                if not link:
+                    link = SupplierProduct(
+                        supplierId=supplier.supplierID,
+                        productId=product.id
+                    )
+
+                link.unitCost = cost
+                link.minimumOrderQuantity = minimum
+                link.leadTimeDays = lead
+                link.isPrefered = preferred
+                link.lastPriceUpdate = datetime.now()
+
+                db.session.add(link)
+                flash('Supplier product saved.', 'success')
+
+            elif action == 'remove_product':
+                supplier_id = int(request.form['supplier_id'])
+                product_id = int(request.form['product_id'])
+
+                link = db.session.scalar(
+                    db.select(SupplierProduct).where(
+                        SupplierProduct.supplierId == supplier_id,
+                        SupplierProduct.productId == product_id
+                    )
+                )
+
+                if not link:
+                    raise ValueError('Supplier product link not found.')
+
+                db.session.delete(link)
+                flash('Product removed from supplier.', 'success')
+
+            else:
+                raise ValueError('Unknown supplier action.')
+
+            db.session.commit()
+
+        except (ValueError, KeyError, InvalidOperation) as exc:
+            db.session.rollback()
+            flash(str(exc) or 'Invalid supplier information.', 'danger')
+
+        except Exception:
+            db.session.rollback()
+            app.logger.exception('Supplier management save failed')
+            flash(
+                'Unable to save changes. Check the server log.',
+                'danger'
+            )
+
+        return redirect(url_for('supplier_management'))
+
+    # RETRIEVE SUPPLIERS
+    suppliers = db.session.scalars(
+        db.select(Supplier).order_by(Supplier.supplierName)
+    ).all()
+
+    # RETRIEVE PRODUCTS
+    products = db.session.scalars(
+        db.select(Product).order_by(Product.productName)
+    ).all()
+
+    # RETRIEVE SUPPLIER PRODUCT LINKS
+    links = db.session.scalars(
+        db.select(SupplierProduct).order_by(SupplierProduct.unitCost)
+    ).all()
+
+    # RETRIEVE INVENTORY
+    inventory_rows = db.session.scalars(
+        db.select(Inventory)
+    ).all()
+
+    # RETRIEVE REORDER RECOMMENDATIONS
+    recommendations = db.session.scalars(
+        db.select(ReorderRecommendation).where(
+            ReorderRecommendation.status.in_(['pending', 'approved'])
+        ).order_by(
+            ReorderRecommendation.recommendedOrderDate
+        )
+    ).all()
+
+    # GROUP PRODUCTS BY SUPPLIER
+    links_by_supplier = {}
+    comparisons = {}
+
+    for link in links:
+        links_by_supplier.setdefault(
+            link.supplierId, []
+        ).append(link)
+
+        comparisons.setdefault(
+            link.productId, []
+        ).append(link)
+
+    # ONLY COMPARE PRODUCTS WITH MULTIPLE SUPPLIERS
+    comparisons = {
+        product_id: offers
+        for product_id, offers in comparisons.items()
+        if len(offers) >= 2
+    }
+
+    # LOW STOCK ALERTS
+    low_stock = [
+        stock for stock in inventory_rows
+        if stock.quantityOnHand <= stock.reorderThreshold
+    ]
+
+    # DUE REORDER RECOMMENDATIONS
+    today = datetime.now().date()
+
+    due_recommendations = [
+        recommendation for recommendation in recommendations
+        if recommendation.recommendedOrderDate.date() <= today
+    ]
+
+    return render_template(
+        'supplier_management.html',
+        suppliers=suppliers,
+        products=products,
+        links_by_supplier=links_by_supplier,
+        comparisons=comparisons,
+        low_stock=low_stock,
+        recommendations=recommendations,
+        due_recommendations=due_recommendations,
+        today=today,
+        linked_products=len(links)
+    )
+
 
 
 # ---------------------------------------------------------------------------

@@ -5,170 +5,272 @@
 
 {% block content %}
 
-<div class="container-fluid py-3">
+<div class="container-fluid py-4 reports-page">
 
     <!-- PAGE HEADER -->
-    <div class="mb-4">
-        <h2 class="fw-bold">Reports & Analytics</h2>
-        <p class="text-muted">
-            View sales, payments, and business performance.
-        </p>
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Reports & Analytics</h2>
+            <p class="text-muted mb-0">
+                Track sales, payments, and business performance.
+            </p>
+        </div>
+
+        <a href="{{ url_for('admin_dashboard') }}"
+           class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left me-2"></i>
+            Back to Dashboard
+        </a>
     </div>
 
-    <!-- REPORT PERIOD -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <div class="d-flex flex-wrap align-items-center gap-3">
-                <h5 class="mb-0 me-auto">Sales Overview</h5>
-
-                <span class="badge bg-primary fs-6">
-                    All Transactions
-                </span>
+    <!-- SALES OVERVIEW HEADER -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h5 class="fw-bold mb-1">Sales Overview</h5>
+                <small class="text-muted">
+                    Summary of completed transactions
+                </small>
             </div>
+
+            <span class="badge rounded-pill px-3 py-2 reports-all-transactions-badge">
+                All Transactions
+            </span>
         </div>
     </div>
 
     <!-- SUMMARY CARDS -->
     <div class="row g-3 mb-4">
 
-        <div class="col-12 col-md-6 col-xl-3">
-            <div class="card shadow-sm h-100 border-0">
-                <div class="card-body">
-                    <div class="text-muted mb-2">
-                        <i class="bi bi-currency-dollar"></i>
-                        Total Revenue
+        <!-- TOTAL REVENUE -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-muted fw-semibold">
+                            Total Revenue
+                        </span>
+                        <i class="bi bi-currency-dollar fs-4 text-success"></i>
                     </div>
-                    <h3 class="fw-bold text-success">
+
+                    <h3 class="fw-bold text-success mb-1">
                         ${{ "%.2f"|format(total_revenue|default(0, true)) }}
                     </h3>
+
+                    <small class="text-muted">
+                        Total sales generated
+                    </small>
                 </div>
             </div>
         </div>
 
-        <div class="col-12 col-md-6 col-xl-3">
-            <div class="card shadow-sm h-100 border-0">
-                <div class="card-body">
-                    <div class="text-muted mb-2">
-                        <i class="bi bi-receipt"></i>
-                        Total Transactions
+        <!-- TOTAL TRANSACTIONS -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-muted fw-semibold">
+                            Transactions
+                        </span>
+                        <i class="bi bi-receipt fs-4 text-primary"></i>
                     </div>
-                    <h3 class="fw-bold">
+
+                    <h3 class="fw-bold mb-1">
                         {{ total_transactions|default(0, true) }}
                     </h3>
+
+                    <small class="text-muted">
+                        Completed purchases
+                    </small>
                 </div>
             </div>
         </div>
 
-        <div class="col-12 col-md-6 col-xl-3">
-            <div class="card shadow-sm h-100 border-0">
-                <div class="card-body">
-                    <div class="text-muted mb-2">
-                        <i class="bi bi-cash-stack"></i>
-                        Cash Sales
+        <!-- CASH SALES -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-muted fw-semibold">
+                            Cash Sales
+                        </span>
+                        <i class="bi bi-cash-stack fs-4 text-success"></i>
                     </div>
-                    <h3 class="fw-bold">
+
+                    <h3 class="fw-bold mb-1">
                         ${{ "%.2f"|format(cash_sales|default(0, true)) }}
                     </h3>
+
+                    <small class="text-muted">
+                        Cash payments received
+                    </small>
                 </div>
             </div>
         </div>
 
-        <div class="col-12 col-md-6 col-xl-3">
-            <div class="card shadow-sm h-100 border-0">
-                <div class="card-body">
-                    <div class="text-muted mb-2">
-                        <i class="bi bi-credit-card"></i>
-                        Card Sales
+        <!-- CARD SALES -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="text-muted fw-semibold">
+                            Card Sales
+                        </span>
+                        <i class="bi bi-credit-card fs-4 text-primary"></i>
                     </div>
-                    <h3 class="fw-bold">
+
+                    <h3 class="fw-bold mb-1">
                         ${{ "%.2f"|format(card_sales|default(0, true)) }}
                     </h3>
+
+                    <small class="text-muted">
+                        Card payments received
+                    </small>
                 </div>
             </div>
         </div>
 
     </div>
 
-    <!-- CHARTS -->
+    <!-- SALES CHARTS -->
     <div class="row g-3 mb-4">
 
-        <!-- DAILY SALES -->
+        <!-- DAILY SALES CHART -->
         <div class="col-12 col-xl-7">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="fw-bold mb-3">
-                        <i class="bi bi-bar-chart-fill me-2"></i>
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+
+                    <h5 class="fw-bold mb-1">
+                        <i class="bi bi-bar-chart-fill me-2 text-primary"></i>
                         Daily Sales
                     </h5>
 
-                    <div style="height: 300px;">
+                    <p class="text-muted small mb-4">
+                        Revenue generated each day
+                    </p>
+
+                    <div class="reports-chart-container">
                         <canvas id="salesChart"></canvas>
                     </div>
+
                 </div>
             </div>
         </div>
 
-        <!-- PAYMENT BREAKDOWN -->
+        <!-- PAYMENT METHOD CHART -->
         <div class="col-12 col-xl-5">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h5 class="fw-bold mb-3">
-                        <i class="bi bi-pie-chart-fill me-2"></i>
-                        Payment Method Breakdown
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+
+                    <h5 class="fw-bold mb-1">
+                        <i class="bi bi-pie-chart-fill me-2 text-primary"></i>
+                        Payment Breakdown
                     </h5>
 
-                    <div style="height: 300px;">
+                    <p class="text-muted small mb-4">
+                        Cash versus card revenue
+                    </p>
+
+                    <div class="reports-chart-container">
                         <canvas id="paymentChart"></canvas>
                     </div>
+
                 </div>
             </div>
         </div>
 
     </div>
 
-    <!-- PROFITABILITY SECTION -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <h5 class="fw-bold mb-3">
-                <i class="bi bi-graph-up-arrow me-2"></i>
-                Profit & Loss
-            </h5>
+    <!-- BUSINESS PERFORMANCE -->
+    <div class="row g-3 mb-4">
 
-            <p class="text-muted mb-0">
-                Profit, expenses, and margin calculations
-                will appear here once product costs and
-                operating expenses are connected.
-            </p>
+        <!-- PROFIT AND LOSS -->
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
+
+                    <h5 class="fw-bold mb-3">
+                        <i class="bi bi-graph-up-arrow me-2 text-success"></i>
+                        Profit & Loss
+                    </h5>
+
+                    <p class="text-muted mb-3">
+                        Monitor profitability, expenses,
+                        and overall business performance.
+                    </p>
+
+                    <div class="p-3 rounded reports-info-panel">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-info-circle text-primary"></i>
+                            <span class="small text-muted">
+                                Profit calculations will become available
+                                once product costs and operating expenses
+                                are connected.
+                            </span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
         </div>
-    </div>
 
-    <!-- PRODUCT PERFORMANCE -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
-            <h5 class="fw-bold mb-3">
-                <i class="bi bi-box-seam me-2"></i>
-                Product Performance
-            </h5>
+        <!-- PRODUCT PERFORMANCE -->
+        <div class="col-12 col-lg-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body p-4">
 
-            <p class="text-muted mb-0">
-                Best-selling products and their sales
-                performance will appear here once
-                transaction item data is connected.
-            </p>
+                    <h5 class="fw-bold mb-3">
+                        <i class="bi bi-box-seam me-2 text-primary"></i>
+                        Product Performance
+                    </h5>
+
+                    <p class="text-muted mb-3">
+                        Identify best-selling products
+                        and monitor inventory performance.
+                    </p>
+
+                    <div class="p-3 rounded reports-info-panel">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="bi bi-info-circle text-primary"></i>
+                            <span class="small text-muted">
+                                Product sales rankings will become available
+                                once individual transaction items
+                                are connected.
+                            </span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
         </div>
+
     </div>
 
     <!-- TRANSACTION HISTORY -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-body">
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
 
-            <h5 class="fw-bold mb-3">
-                <i class="bi bi-clock-history me-2"></i>
-                Transaction History
-            </h5>
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
+                <div>
+                    <h5 class="fw-bold mb-1">
+                        <i class="bi bi-clock-history me-2 text-primary"></i>
+                        Transaction History
+                    </h5>
+
+                    <small class="text-muted">
+                        View recorded sales transactions
+                    </small>
+                </div>
+
+                <span class="badge bg-light text-dark border px-3 py-2">
+                    {{ total_transactions|default(0, true) }}
+                    Transactions
+                </span>
+            </div>
 
             <div class="table-responsive">
                 <table class="table table-hover align-middle">
+
                     <thead class="table-light">
                         <tr>
                             <th>Transaction ID</th>
@@ -179,86 +281,116 @@
                     </thead>
 
                     <tbody>
-                        {% for sale in sales %}
-                        <tr>
-                            <td>#{{ sale.id }}</td>
+                       
+{% for sale in sales|default([]) %}
+<tr>
+    <td class="fw-semibold">
+        #{{ sale.transactionID }}
+    </td>
 
-                            <td>
-                                {{ sale.created_at.strftime('%m/%d/%Y %I:%M %p') }}
-                            </td>
+    <td>
+        {{ sale.transactionDate.strftime('%m/%d/%Y %I:%M %p') if sale.transactionDate else 'N/A' }}
+    </td>
 
-                            <td>
-                                {% if sale.payment_method|lower == 'cash' %}
-                                    <span class="badge bg-success">
-                                        Cash
-                                    </span>
-                                {% else %}
-                                    <span class="badge bg-primary">
-                                        {{ sale.payment_method|capitalize }}
-                                    </span>
-                                {% endif %}
-                            </td>
+    <td>
+        {% if sale.paymentMethod|lower == 'cash' %}
+            <span class="badge bg-success px-3 py-2">
+                <i class="bi bi-cash me-1"></i>
+                Cash
+            </span>
+        {% elif sale.paymentMethod|lower in ['card', 'credit', 'debit'] %}
+            <span class="badge bg-primary px-3 py-2">
+                <i class="bi bi-credit-card me-1"></i>
+                {{ sale.paymentMethod|capitalize }}
+            </span>
+        {% else %}
+            <span class="badge bg-secondary px-3 py-2">
+                {{ sale.paymentMethod or 'Unknown' }}
+            </span>
+        {% endif %}
+    </td>
 
-                            <td class="text-end fw-semibold">
-                                ${{ "%.2f"|format(sale.total) }}
-                            </td>
-                        </tr>
+    <td class="text-end fw-bold">
+        ${{ "%.2f"|format(sale.totalAmount) }}
+    </td>
+</tr>
 
-                        {% else %}
-                        <tr>
-                            <td colspan="4" class="text-center text-muted py-4">
-                                No completed transactions yet.
-                            </td>
-                        </tr>
-                        {% endfor %}
+{% else %}
+<tr>
+    <td colspan="4" class="text-center text-muted py-5">
+        <i class="bi bi-receipt fs-1 d-block mb-3"></i>
+        <p class="fw-semibold mb-1">
+            No transactions recorded
+        </p>
+        <small>Completed sales will appear here.</small>
+    </td>
+</tr>
+{% endfor %}
+
                     </tbody>
+
                 </table>
             </div>
 
         </div>
     </div>
 
-    <!-- BACK BUTTON -->
-    <a href="{{ url_for('admin_dashboard') }}"
-       class="btn btn-outline-primary btn-lg">
-        <i class="bi bi-arrow-left me-2"></i>
-        Back to Dashboard
-    </a>
-
 </div>
 
 {% endblock %}
 
 
-{% block extra_js %}
+
+{% block scripts %}
+
+{{ super() }}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-
 <script>
-    // Sales chart data generated from rendered transactions.
+document.addEventListener("DOMContentLoaded", function () {
+
+    // DAILY SALES DATA
+    const transactions = [
+        {% for sale in sales %}
+        {
+            date: {{ sale.transactionDate.strftime('%Y-%m-%d') | tojson }},
+            amount: {{ (sale.totalAmount | float) | tojson }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+
     const dailySales = {};
 
-    {% for sale in sales %}
-    {
-        const date = {{ sale.created_at.strftime('%Y-%m-%d') | tojson }};
-        const amount = {{ sale.total | tojson }};
+    transactions.forEach(transaction => {
+        if (!dailySales[transaction.date]) {
+            dailySales[transaction.date] = 0;
+        }
 
-        dailySales[date] = (dailySales[date] || 0) + amount;
-    }
-    {% endfor %}
+        dailySales[transaction.date] += transaction.amount;
+    });
 
-    const sortedDates = Object.keys(dailySales).sort();
+    const dates = Object.keys(dailySales).sort();
 
-    new Chart(document.getElementById('salesChart'), {
-        type: 'bar',
+    // DAILY SALES BAR CHART
+    const salesCanvas = document.getElementById("salesChart");
+
+    
+if (salesCanvas && typeof Chart !== "undefined") {
+    new Chart(salesCanvas, {
+        type: "line",
         data: {
-            labels: sortedDates,
+            labels: dates,
             datasets: [{
-                label: 'Sales ($)',
-                data: sortedDates.map(date => dailySales[date]),
-                backgroundColor: '#087cf5',
-                borderRadius: 6
+                label: "Daily Sales",
+                data: dates.map(date => dailySales[date]),
+                borderColor: "#17365d",
+                backgroundColor: "rgba(23, 54, 93, 0.12)",
+                borderWidth: 3,
+                tension: 0.3,
+                fill: true,
+                pointRadius: 5,
+                pointBackgroundColor: "#17365d"
             }]
         },
         options: {
@@ -271,27 +403,43 @@
             }
         }
     });
+}
 
-    new Chart(document.getElementById('paymentChart'), {
-        type: 'doughnut',
-        data: {
-            labels: ['Cash', 'Card'],
-            datasets: [{
-                data: [
-                    {{ cash_sales|default(0, true)|tojson }},
-                    {{ card_sales|default(0, true)|tojson }}
-                ],
-                backgroundColor: [
-                    '#123a60',
-                    '#58a6ff'
-                ]
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
-        }
-    });
+
+    // PAYMENT BREAKDOWN CHART
+    const cashSales = {{ (cash_sales | default(0, true) | float) | tojson }};
+    const cardSales = {{ (card_sales | default(0, true) | float) | tojson }};
+
+    const paymentCanvas = document.getElementById("paymentChart");
+
+    if (paymentCanvas && typeof Chart !== "undefined") {
+        new Chart(paymentCanvas, {
+            type: "doughnut",
+            data: {
+                labels: ["Cash", "Card"],
+                datasets: [{
+                    data: [cashSales, cardSales],
+                    backgroundColor: [
+                        "#17365d",
+                        "#58a6ff"
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: "bottom"
+                    }
+                }
+            }
+        });
+    }
+
+});
 </script>
 
 {% endblock %}
+

@@ -1104,3 +1104,345 @@ body:has(.login-page) {
     .product-entry-card-header { padding: 17px 18px; }
     .product-entry-form { padding: 18px; }
 }
+
+/* =========================================
+   SUPPLIER MANAGEMENT PAGE
+========================================= */
+.supplier-page { color: #123e6b; }
+
+.supplier-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 24px;
+}
+
+.supplier-heading h1 {
+    font-size: 30px;
+    font-weight: 750;
+    margin: 0;
+}
+
+.supplier-card {
+    background: white;
+    border: 1px solid #d3e4fb;
+    border-radius: 12px;
+    padding: 20px;
+    height: 100%;
+}
+
+.supplier-card .number {
+    font-size: 28px;
+    font-weight: 750;
+    color: #123e6b;
+}
+
+.supplier-table-card {
+    background: white;
+    border: 1px solid #d3e4fb;
+    border-radius: 12px;
+    overflow: visible;
+}
+
+.supplier-table th {
+    background: #f4f8fd;
+    color: #123e6b;
+    padding: 16px;
+    white-space: nowrap;
+}
+
+.supplier-table td {
+    padding: 15px;
+    vertical-align: middle;
+}
+
+.supplier-search {
+    min-height: 48px;
+    border-color: #cbdff8;
+}
+
+.supplier-page .btn {
+    min-height: 44px;
+}
+
+.supplier-modal .form-control,
+.supplier-modal .form-select {
+    min-height: 46px;
+    border-color: #cbdff8;
+}
+
+/* Compact pencil + three-dot actions */
+.supplier-directory .table-responsive { overflow: visible; }
+.supplier-actions-cell { white-space: nowrap; width: 95px; }
+.supplier-actions { display: flex; align-items: center; gap: 12px; }
+.supplier-icon-button {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 44px; border: 0; border-radius: 7px;
+    background: transparent; color: #164a85; cursor: pointer;
+}
+.supplier-icon-button:hover, .supplier-icon-button:focus-visible {
+    background: #edf4ff; color: #0b3b73;
+}
+.supplier-directory .dropdown-menu {
+    border: 1px solid #d3e4fb; border-radius: 10px;
+    min-width: 190px; padding: 6px; z-index: 1050;
+}
+.supplier-directory .dropdown-item {
+    border-radius: 6px; padding: 10px 12px; font-size: 14px;
+}
+.supplier-directory .dropdown-item:hover { background: #edf4ff; }
+@media (max-width: 767px) {
+    .supplier-directory .table-responsive { overflow-x: auto; }
+}
+
+/* ===== POS CHECKOUT PAGE ===== */
+.pos-page {
+        color: #142b49;
+    }
+
+    .pos-card {
+        border: 0;
+        border-radius: 14px;
+        box-shadow: 0 3px 16px rgba(20, 43, 73, 0.08);
+    }
+
+    .pos-card .card-header {
+        background: white;
+        border-bottom: 1px solid #e7edf4;
+        padding: 20px 24px;
+        border-radius: 14px 14px 0 0;
+    }
+
+    .pos-input {
+        min-height: 52px;
+        font-size: 16px;
+    }
+
+    .pos-btn {
+        min-height: 50px;
+        font-weight: 600;
+    }
+
+    .pos-primary {
+        background: #142b49;
+        border-color: #142b49;
+        color: white;
+    }
+
+    .pos-primary:hover {
+        background: #203e64;
+        border-color: #203e64;
+        color: white;
+    }
+
+    .pos-table th {
+        background: #f3f6fa;
+        color: #142b49;
+        font-size: 14px;
+        padding: 15px;
+        white-space: nowrap;
+    }
+
+    .pos-table td {
+        padding: 16px 15px;
+        vertical-align: middle;
+    }
+
+    .pos-total {
+        background: #142b49;
+        color: white;
+        border-radius: 12px;
+        padding: 22px;
+    }
+
+    .payment-choice {
+        min-height: 70px;
+        border: 2px solid #dce4ee;
+        background: white;
+        border-radius: 10px;
+        font-weight: 600;
+        color: #142b49;
+    }
+
+    .payment-choice.active {
+        background: #eaf2ff;
+        border-color: #142b49;
+    }
+
+    .empty-cart {
+        text-align: center;
+        padding: 55px 15px;
+        color: #8290a2;
+    }
+
+    .empty-cart i {
+        font-size: 42px;
+    }
+
+    
+/* POS COLORS — MATCH INVENTORY & PRODUCT ENTRY */
+
+.pos-page {
+    color: #123e6b;
+}
+
+/* Cards */
+.pos-card {
+    background: #ffffff;
+    border: 1px solid #d3e4fb;
+    border-radius: 13px;
+    box-shadow: 0 8px 28px rgba(26, 75, 130, 0.06);
+}
+
+.pos-card .card-header {
+    background: linear-gradient(135deg, #f5f9ff, #ffffff);
+    border-bottom: 1px solid #e0ebf9;
+    color: #123e6b;
+}
+
+/* Product search */
+.pos-input {
+    border: 1px solid #cbdff8;
+    background: #fbfdff;
+    color: #123e6b;
+    border-radius: 8px;
+}
+
+.pos-input:focus {
+    border-color: #438cf4;
+    box-shadow: 0 0 0 3px rgba(67, 140, 244, 0.12);
+}
+
+/* Add Item button */
+.pos-primary {
+    background: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+}
+
+.pos-primary:hover {
+    background: #0b5ed7;
+    border-color: #0a58ca;
+    color: white;
+}
+
+/* Transaction table */
+.pos-table th {
+    background: #f4f8fd;
+    color: #123e6b;
+    border-bottom: 1px solid #d7e6f8;
+}
+
+.pos-table td {
+    color: #123e6b;
+    border-bottom: 1px solid #e5eef9;
+}
+
+/* Order total */
+.pos-total {
+    background: #123a60;
+    color: white;
+}
+
+/* Cash and Card buttons */
+.payment-choice {
+    background: white;
+    color: #123e6b;
+    border: 2px solid #cbdff8;
+}
+
+.payment-choice.active {
+    background: #eaf2ff;
+    border-color: #0d6efd;
+    color: #123e6b;
+}
+
+/* Empty cart */
+.empty-cart {
+    color: #58769b;
+}
+
+/* Cash payment panel: formerly inline styling */
+.pos-cash-section {
+    display: none;
+    background: #f3f6fa;
+}
+
+/* ============================================================
+   REPORTS & ANALYTICS PAGE
+   Add these rules to the BOTTOM of static/css/style.css
+   ============================================================ */
+
+.reports-page .reports-all-transactions-badge {
+    background-color: #142b49;
+}
+
+.reports-page .reports-chart-container {
+    height: 300px;
+    position: relative;
+}
+
+.reports-page .reports-info-panel {
+    background-color: #f3f6fa;
+}
+
+/* ==============================================================
+   HAPPY DELI JUNCO — SETTINGS PAGE
+   Paste at the END of static/css/style.css
+   ============================================================== */
+.settings-page { color:#102c4d; }
+.settings-topbar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px; margin-bottom:27px; }
+.settings-title-wrap { display:flex; align-items:center; gap:20px; }
+.settings-title-icon { font-size:44px; color:#2169d5; line-height:1; }
+.settings-title { font-size:34px; font-weight:800; line-height:1.15; margin:0 0 5px; }
+.settings-subtitle { color:#344256; margin:0; font-size:15px; }
+.settings-back { padding:11px 19px; border-radius:7px; font-weight:500; }
+.settings-panel { background:#fff; border:1px solid #dce8f9; border-radius:12px; padding:18px; box-shadow:0 4px 16px rgba(16,45,82,.035); }
+.settings-panel-heading { display:flex; align-items:flex-start; gap:19px; min-height:70px; padding:3px 2px 16px; }
+.settings-heading-icon { flex:0 0 40px; font-size:34px; color:#1c68d9; line-height:1.15; text-align:center; }
+.settings-heading-copy { flex:1; min-width:0; }
+.settings-heading-copy h2 { font-size:21px; font-weight:750; margin:0 0 4px; color:#102c4d; }
+.settings-heading-copy p { font-size:14px; color:#64748b; margin:0; line-height:1.35; }
+.settings-outline-action { white-space:nowrap; font-size:13px; padding:9px 13px; }
+.settings-outline-action:disabled { opacity:.58; }
+.settings-panel-inner { background:#f4f7fc; border-radius:10px; padding:14px 20px; }
+.settings-info-row { display:grid; grid-template-columns:minmax(125px, 42%) 1fr; align-items:center; gap:14px; padding:12px 0; font-size:14px; }
+.settings-info-row strong { font-weight:700; color:#122b4b; }
+.settings-info-row span { overflow-wrap:anywhere; }
+.settings-pill { display:inline-flex; width:max-content; align-items:center; border-radius:9px; padding:5px 11px; font-size:13px; font-weight:600; }
+.settings-pill-blue { background:#deebff; color:#1260c4; border:1px solid #c3dcff; }
+.settings-pill-green { background:#d8f4e9; color:#137c5b; }
+.settings-pill-muted { background:#e9eef5; color:#53657c; }
+.settings-security-row { display:flex; justify-content:space-between; align-items:center; gap:12px; background:#f4f7fc; border-radius:9px; padding:19px 18px; margin:0 0 14px; font-size:14px; }
+.settings-security-row strong { font-weight:700; }
+.settings-password-mask { display:inline-block; margin-left:24px; letter-spacing:2px; font-size:17px; }
+.settings-security-2fa { margin-bottom:0; align-items:center; }
+.settings-security-2fa p { margin:4px 0 9px; font-size:13px; color:#64748b; }
+.settings-preferences { background:#f4f7fc; border-radius:9px; padding:12px; }
+.settings-preference-row { display:flex; align-items:center; justify-content:space-between; gap:18px; min-height:55px; padding:5px 4px; font-size:14px; }
+.settings-preference-row label { flex:1; margin:0; }
+.settings-preference-row strong { font-weight:700; }
+.settings-preference-row small { display:block; font-size:12px; color:#64748b; margin-top:2px; }
+.settings-preference-row .form-select { width:46%; max-width:230px; min-height:40px; background-color:#fff; }
+.settings-preference-row .form-select:disabled { background-color:#fff; opacity:.82; }
+.settings-switch { width:2.65em!important; height:1.45em!important; cursor:pointer; }
+.settings-save { min-height:41px; font-weight:600; margin-top:7px; background:#1c6de9; border-color:#1c6de9; }
+.settings-browser-note { display:block; color:#64748b; margin:9px 4px 0; }
+.settings-system-grid { background:#f4f7fc; border-radius:9px; padding:10px 20px; display:grid; grid-template-columns:1fr 1fr; column-gap:38px; }
+.settings-system-grid .settings-info-row { grid-template-columns:minmax(110px, 40%) 1fr; }
+body.settings-compact .table > :not(caption) > * > * { padding-top:.4rem; padding-bottom:.4rem; }
+body.settings-reduce-motion *, body.settings-reduce-motion *::before, body.settings-reduce-motion *::after { animation-duration:.01ms!important; transition-duration:.01ms!important; scroll-behavior:auto!important; }
+@media(max-width:767px) {
+  .settings-title { font-size:28px; }
+  .settings-title-icon { font-size:34px; }
+  .settings-panel { padding:15px; }
+  .settings-panel-heading { flex-wrap:wrap; gap:10px; }
+  .settings-heading-copy h2 { font-size:19px; }
+  .settings-outline-action { margin-left:0; }
+  .settings-system-grid { grid-template-columns:1fr; }
+  .settings-security-row { flex-wrap:wrap; }
+  .settings-info-row { grid-template-columns:minmax(105px, 43%) 1fr; }
+}
+
