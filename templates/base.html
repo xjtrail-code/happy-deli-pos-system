@@ -44,6 +44,20 @@
             <!-- STORE BRAND -->
             <div class="col d-flex align-items-center">
 
+                {% if request.endpoint != 'product_entry' %}
+                <button
+                    class="navbar-toggler sidebar-toggler"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#sidebarNav"
+                    aria-controls="sidebarNav"
+                    aria-expanded="false"
+                    aria-label="Toggle navigation"
+                >
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                {% endif %}
+
                 <div class="store-logo">
                     <i class="bi bi-shop"></i>
                 </div>
@@ -152,7 +166,7 @@
     {% if request.endpoint != 'product_entry' %}
     <aside class="sidebar">
 
-        <nav class="sidebar-nav">
+        <nav class="sidebar-nav collapse" id="sidebarNav">
 
 
             <!-- DASHBOARD -->
@@ -359,6 +373,29 @@
     updateDateTime();
 
     setInterval(updateDateTime, 1000);
+
+</script>
+
+
+<!-- Close sidebar menu when clicking outside of it -->
+<script>
+
+    document.addEventListener("click", function (event) {
+
+        const nav = document.getElementById("sidebarNav");
+
+        if (!nav || !nav.classList.contains("show")) {
+            return;
+        }
+
+        const clickedInsideNav = nav.contains(event.target);
+        const clickedToggler = event.target.closest(".sidebar-toggler");
+
+        if (!clickedInsideNav && !clickedToggler) {
+            bootstrap.Collapse.getOrCreateInstance(nav, { toggle: false }).hide();
+        }
+
+    });
 
 </script>
 
