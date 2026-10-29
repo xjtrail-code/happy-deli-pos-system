@@ -1,0 +1,36 @@
+﻿{% extends 'base.html' %}
+{% block title %}Supplier Receipts | Happy Deli Junco{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+<h1>Receipts</h1>
+<nav class="nav nav-pills mb-4" aria-label="Receipt types"><a class="nav-link" href="{{ url_for('receipts') }}">Customer sales</a><a class="nav-link active" href="{{ url_for('purchase_receipts') }}">Supplier purchases</a></nav>
+{% for category, message in get_flashed_messages(with_categories=true) %}<div class="alert alert-{{ category }}" role="status">{{ message }}</div>{% endfor %}
+{% if g.user.has_permission('purchase_receipts') %}
+<section class="card p-4 mb-4"><h2 class="h4">Record supplier receipt</h2><p>Saving records this purchase and adds the quantities to inventory. Enter each supplier reference once. Totals cover item costs before any supplier tax or fees.</p>
+{% if suppliers and products %}
+<form method="post">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<div class="row g-3 mb-3"><div class="col-md-6"><label for="supplier" class="form-label">Supplier</label><select id="supplier" name="supplier_id" class="form-select" required>{% for supplier in suppliers %}<option value="{{ supplier.supplierID }}">{{ supplier.supplierName }}</option>{% endfor %}</select></div><div class="col-md-6"><label for="reference" class="form-label">Supplier receipt / invoice reference</label><input id="reference" name="reference" class="form-control" maxlength="100" required></div></div>
+<div id="receipt-lines">
+<div class="row g-2 mb-2 receipt-line"><div class="col-md-6"><label class="form-label">Product<select class="form-select" name="product_id" required>{% for product in products %}<option value="{{ product.id }}">{{ product.productName }} ({{ product.barcode }})</option>{% endfor %}</select></label></div><div class="col-md-2"><label class="form-label">Quantity<input class="form-control" type="number" name="quantity" min="1" max="1000000" required></label></div><div class="col-md-2"><label class="form-label">Unit cost ($)<input class="form-control" type="number" name="unit_cost" min="0" max="99999999.99" step="0.01" required></label></div><div class="col-md-2 d-flex align-items-center"><button class="btn btn-outline-danger" type="button" onclick="if(document.querySelectorAll('.receipt-line').length > 1) this.closest('.receipt-line').remove()">Remove</button></div></div>
+</div>
+<button class="btn btn-outline-secondary" type="button" id="add-line">Add item</button><button class="btn btn-primary" type="submit">Save receipt and receive stock</button>
+</form>
+{% else %}<p>Add a supplier and an active product before recording a purchase receipt.</p>{% endif %}
+</section>
+{% endif %}
+<h2 class="h4">Recorded purchases</h2>
+{% for r in page.items %}<details class="card mb-3"><summary class="card-header">{{ r.supplier.supplierName }} · {{ r.reference }} · {{ r.received_at.strftime('%Y-%m-%d %H:%M') }} · ${{ '%.2f'|format(r.total) }}</summary><div class="card-body"><p>Received by {{ r.user.username }}</p><div class="table-responsive"><table class="table"><thead><tr><th>Product</th><th>Quantity</th><th>Unit cost</th><th>Total</th></tr></thead><tbody>{% for item in r.items %}<tr><td>{{ item.product.productName }}</td><td>{{ item.quantity }}</td><td>${{ '%.2f'|format(item.unit_cost) }}</td><td>${{ '%.2f'|format(item.quantity * item.unit_cost) }}</td></tr>{% endfor %}</tbody></table></div></div></details>{% else %}<p>No supplier receipts recorded yet.</p>{% endfor %}
+<nav aria-label="Supplier receipt pages">{% if page.has_prev %}<a href="{{ url_for('purchase_receipts', page=page.prev_num) }}">Previous</a>{% endif %} Page {{ page.page }} of {{ page.pages or 1 }} {% if page.has_next %}<a href="{{ url_for('purchase_receipts', page=page.next_num) }}">Next</a>{% endif %}</nav>
+</div>
+{% endblock %}
+{% block scripts %}<script>
+const addLine = document.getElementById('add-line');
+if (addLine) addLine.addEventListener('click', () => {
+  const lines = document.getElementById('receipt-lines');
+  if (lines.children.length >= 100) return;
+  const row = lines.firstElementChild.cloneNode(true);
+  row.querySelectorAll('input').forEach(input => input.value = '');
+  lines.appendChild(row);
+});
+</script>{% endblock %}

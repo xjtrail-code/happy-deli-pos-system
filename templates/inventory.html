@@ -6,7 +6,7 @@
     <div><h1><i class="bi bi-list-ul"></i> Inventory</h1></div>
     <div class="inventory-heading-actions">
       <div class="input-group inventory-search"><span class="input-group-text"><i class="bi bi-search"></i></span><input id="inventory-search" class="form-control" type="search" placeholder="Search by product name, barcode, or category..." aria-label="Search inventory"></div>
-      <a class="btn btn-primary add-product-btn" href="{{ url_for('product_entry') }}"><i class="bi bi-plus-lg"></i> Add Product</a>
+      {% if g.user.has_permission('products') %}<a class="btn btn-primary add-product-btn" href="{{ url_for('product_entry') }}"><i class="bi bi-plus-lg"></i> Add Product</a>{% endif %}
     </div>
   </div>
   {% if request.args.get('stock_added') %}<div class="alert alert-success alert-dismissible fade show">Stock received and inventory updated successfully.<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{% elif request.args.get('updated') %}<div class="alert alert-success alert-dismissible fade show">Inventory updated successfully.<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{% endif %}

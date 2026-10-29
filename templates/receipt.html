@@ -1,0 +1,13 @@
+﻿{% extends 'base.html' %}
+{% block title %}Receipt #{{ transaction.transactionID }} | Happy Deli Junco{% endblock %}
+{% block extra_css %}<style>@media print { .top-header, .sidebar, .receipt-actions { display:none!important; } .page-wrapper, .main-content { display:block!important; margin:0!important; padding:0!important; width:100%!important; } }</style>{% endblock %}
+{% block content %}
+<div class="container py-4">
+  <div class="receipt-actions d-flex gap-2 mb-4"><a class="btn btn-outline-secondary" href="{{ url_for('receipts') }}">Back to receipts</a><button class="btn btn-primary" onclick="window.print()">Print receipt</button></div>
+  <article class="card p-4"><h1 class="h3">Happy Deli Junco</h1><h2 class="h5">Receipt #{{ transaction.transactionID }}</h2>
+    <p>{{ transaction.transactionDate.strftime('%Y-%m-%d %H:%M') }}<br>Cashier: {{ transaction.user.username }}<br>Payment: {{ transaction.paymentMethod|title }}<br>Status: <strong>{{ transaction.status|title }}</strong></p>
+    <div class="table-responsive"><table class="table"><thead><tr><th>Item</th><th>Quantity</th><th>Unit price</th><th>Line total</th></tr></thead><tbody>{% for item in transaction.items %}<tr><td>{{ item.product.productName if item.product else 'Unavailable product' }}</td><td>{{ item.quantity }}</td><td>${{ '%.2f'|format(item.unitPrice) }}</td><td>${{ '%.2f'|format(item.lineTotal) }}</td></tr>{% else %}<tr><td colspan="4">No item details available.</td></tr>{% endfor %}</tbody></table></div>
+    <div class="text-end"><p>Subtotal: ${{ '%.2f'|format(transaction.subtotal) }}<br>Tax: ${{ '%.2f'|format(transaction.taxAmount) }}</p><p class="fs-4"><strong>Total: ${{ '%.2f'|format(transaction.totalAmount) }}</strong></p></div>
+  </article>
+</div>
+{% endblock %}

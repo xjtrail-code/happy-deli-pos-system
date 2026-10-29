@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Settings | Happy Deli Junco{% endblock %}
+{% block content %}
+<div class="container-fluid py-4 settings-page">
+  <div class="settings-topbar">
+    <div class="settings-title-wrap">
+      <i class="bi bi-gear-fill settings-title-icon" aria-hidden="true"></i>
+      <div>
+        <h1 class="settings-title">Settings</h1>
+        <p class="settings-subtitle">Manage your account, preferences, and system settings.</p>
+      </div>
+    </div>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-primary settings-back">
+      <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+    </a>
+  </div>
+
+  <div id="settingsAlert" class="alert alert-success d-none" role="status" aria-live="polite"></div>
+
+  <div class="row g-3 align-items-stretch">
+    <!-- MY ACCOUNT -->
+    <div class="col-12 col-xl-6">
+      <section class="settings-panel h-100">
+        <div class="settings-panel-heading">
+          <i class="bi bi-person-fill settings-heading-icon"></i>
+          <div class="settings-heading-copy">
+            <h2>My Account</h2>
+            <p>View your account information.</p>
+          </div>
+          <button class="btn btn-outline-primary settings-outline-action" type="button" disabled title="Profile editing is not connected yet">
+            <i class="bi bi-pencil me-2"></i>Edit Profile
+          </button>
+        </div>
+        <div class="settings-panel-inner">
+          <div class="settings-info-row"><strong>Username</strong><span>{{ g.user.username|default('Signed-in user', true) }}</span></div>
+          <div class="settings-info-row"><strong>Role</strong><span><span class="settings-pill settings-pill-blue">{{ g.user.role|default('Staff', true)|title }}</span></span></div>
+          <div class="settings-info-row"><strong>Account Status</strong><span class="settings-pill settings-pill-green">Signed in</span></div>
+          <div class="settings-info-row"><strong>Member Since</strong><span class="text-muted">Not available</span></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- SECURITY -->
+    <div class="col-12 col-xl-6">
+      <section class="settings-panel h-100">
+        <div class="settings-panel-heading">
+          <i class="bi bi-lock-fill settings-heading-icon"></i>
+          <div class="settings-heading-copy"><h2>Security</h2><p>Manage your password and account security.</p></div>
+        </div>
+        <div class="settings-security-row">
+          <div><strong>Password</strong><span class="settings-password-mask">••••••••</span></div>
+          <button class="btn btn-outline-primary settings-outline-action" type="button" disabled title="Password changes are not connected yet">
+            <i class="bi bi-key me-2"></i>Change Password
+          </button>
+        </div>
+        <div class="settings-security-row settings-security-2fa">
+          <div><strong>Two-Factor Authentication</strong><p>Add an extra layer of security to your account.</p><span class="settings-pill settings-pill-muted">Not configured in this page</span></div>
+          <button class="btn btn-outline-primary settings-outline-action" type="button" disabled title="Two-factor authentication is not connected yet">
+            <i class="bi bi-shield-lock me-2"></i>Enable 2FA
+          </button>
+        </div>
+      </section>
+    </div>
+
+    <!-- DISPLAY -->
+    <div class="col-12 col-xl-6">
+      <section class="settings-panel h-100">
+        <div class="settings-panel-heading">
+          <i class="bi bi-display settings-heading-icon"></i>
+          <div class="settings-heading-copy"><h2>Display Preferences</h2><p>Customize how the system looks and behaves.</p></div>
+        </div>
+        <div class="settings-preferences">
+          <div class="settings-preference-row">
+            <label for="settingsTheme"><strong>Theme</strong></label>
+            <select class="form-select" id="settingsTheme" disabled title="Additional themes are not implemented"><option>Light (Default)</option></select>
+          </div>
+          <div class="settings-preference-row">
+            <label for="settingsCompact"><strong>Compact Tables</strong><small>Show more data in tables.</small></label>
+            <div class="form-check form-switch"><input class="form-check-input settings-switch" type="checkbox" role="switch" id="settingsCompact"></div>
+          </div>
+          <div class="settings-preference-row">
+            <label for="settingsMotion"><strong>Reduce Animations</strong><small>Minimize page transitions and effects.</small></label>
+            <div class="form-check form-switch"><input class="form-check-input settings-switch" type="checkbox" role="switch" id="settingsMotion"></div>
+          </div>
+          <div class="settings-preference-row">
+            <label for="settingsDashboard"><strong>Default Dashboard View</strong></label>
+            <select class="form-select" id="settingsDashboard" disabled title="Dashboard selection is not connected"><option>Admin Dashboard</option></select>
+          </div>
+          <button type="button" id="saveSettings" class="btn btn-primary settings-save w-100"><i class="bi bi-floppy me-2"></i>Save Preferences</button>
+          <small class="settings-browser-note">Display preferences are saved in this browser.</small>
+        </div>
+      </section>
+    </div>
+
+    <!-- BUSINESS INFORMATION -->
+    <div class="col-12 col-xl-6">
+      <section class="settings-panel h-100">
+        <div class="settings-panel-heading">
+          <i class="bi bi-shop settings-heading-icon"></i>
+          <div class="settings-heading-copy"><h2>Business Information</h2><p>Your store details and contact information.</p></div>
+          <button class="btn btn-outline-primary settings-outline-action" type="button" disabled title="Business information editing is not connected yet"><i class="bi bi-pencil me-2"></i>Edit Business Info</button>
+        </div>
+        <div class="settings-panel-inner">
+          <div class="settings-info-row"><strong>Store Name</strong><span>Happy Deli Junco</span></div>
+          <div class="settings-info-row"><strong>Address</strong><span class="text-muted">Not configured</span></div>
+          <div class="settings-info-row"><strong>Phone</strong><span class="text-muted">Not configured</span></div>
+          <div class="settings-info-row"><strong>Email</strong><span class="text-muted">Not configured</span></div>
+        </div>
+      </section>
+    </div>
+
+    <!-- SYSTEM -->
+    <div class="col-12">
+      <section class="settings-panel">
+        <div class="settings-panel-heading">
+          <i class="bi bi-info-circle-fill settings-heading-icon"></i>
+          <div class="settings-heading-copy"><h2>System Information</h2><p>Application details and version information.</p></div>
+        </div>
+        <div class="settings-system-grid">
+          <div class="settings-info-row"><strong>Application</strong><span>Happy Deli Junco POS</span></div>
+          <div class="settings-info-row"><strong>Environment</strong><span class="text-muted">Not available</span></div>
+          <div class="settings-info-row"><strong>Version</strong><span class="text-muted">Not available</span></div>
+          <div class="settings-info-row"><strong>Last Updated</strong><span class="text-muted">Not available</span></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const settings = [
+    { id: "settingsCompact", key: "happyDeliCompactTables", className: "settings-compact" },
+    { id: "settingsMotion", key: "happyDeliReduceMotion", className: "settings-reduce-motion" }
+  ];
+  const alertBox = document.getElementById("settingsAlert");
+  settings.forEach(item => {
+    const input = document.getElementById(item.id);
+    try { input.checked = localStorage.getItem(item.key) === "true"; }
+    catch (error) { input.checked = false; }
+    document.body.classList.toggle(item.className, input.checked);
+  });
+  document.getElementById("saveSettings").addEventListener("click", function () {
+    try {
+      settings.forEach(item => {
+        const checked = document.getElementById(item.id).checked;
+        localStorage.setItem(item.key, String(checked));
+        document.body.classList.toggle(item.className, checked);
+      });
+      alertBox.className = "alert alert-success";
+      alertBox.textContent = "Display preferences saved in this browser.";
+    } catch (error) {
+      alertBox.className = "alert alert-warning";
+      alertBox.textContent = "Browser storage is unavailable. Preferences will only apply until this page is reloaded.";
+      settings.forEach(item => document.body.classList.toggle(item.className, document.getElementById(item.id).checked));
+    }
+  });
+});
+</script>
+{% endblock %}

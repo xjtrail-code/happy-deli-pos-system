@@ -17,7 +17,8 @@ class AuthenticationTests(unittest.TestCase):
         db.create_all()
         for role in ('admin', 'cashier'):
             db.session.add(User(username=role, role=role,
-                                password_hash=generate_password_hash('long-test-password')))
+                                email=f'{role}@example.com', firstName=role, lastName='Test',
+                                passwordHash=generate_password_hash('long-test-password')))
         db.session.commit()
         self.client = app.test_client()
 
@@ -27,7 +28,7 @@ class AuthenticationTests(unittest.TestCase):
         self.context.pop()
 
     def token(self):
-        self.client.get('/')
+        self.client.get('/', follow_redirects=True)
         with self.client.session_transaction() as session:
             return session['csrf_token']
 
@@ -64,7 +65,7 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(self.client.get('/pos').location, '/')
 
     def test_cashier_cannot_access_admin_routes(self):
-        self.assertEqual(self.login('cashier').location, '/pos')
+        self.assertEqual(self.login('cashier').location, '/workspace')
         response = self.client.get('/pos')
         self.assertEqual(response.status_code, 200)
         self.assertNotIn(b'Back to Dashboard', response.data)
@@ -87,8 +88,8 @@ class AuthenticationTests(unittest.TestCase):
                                input='another-long-password\nanother-long-password\n')
         self.assertEqual(result.exit_code, 0, result.output)
         user = db.session.scalar(db.select(User).where(User.username == 'newuser'))
-        self.assertNotEqual(user.password_hash, 'another-long-password')
-        self.assertTrue(check_password_hash(user.password_hash, 'another-long-password'))
+        self.assertNotEqual(user.passwordHash, 'another-long-password')
+        self.assertTrue(check_password_hash(user.passwordHash, 'another-long-password'))
         duplicate = runner.invoke(args=['create-user', 'newuser'],
                                   input='another-long-password\nanother-long-password\n')
         self.assertNotEqual(duplicate.exit_code, 0)

@@ -1,0 +1,20 @@
+﻿{% extends 'base.html' %}
+{% block title %}Reorder Recommendations | Happy Deli Junco{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+  <h1>Reorder Recommendations</h1>
+  <p class="text-muted">Generate suggestions for active products at or below their reorder threshold. Preferred suppliers are selected first, then the lowest unit cost. Quantities respect the configured reorder amount and supplier minimum.</p>
+  {% for category, message in get_flashed_messages(with_categories=true) %}<div class="alert alert-{{ category }}" role="status">{{ message }}</div>{% endfor %}
+  <form method="post" class="mb-4"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-primary" name="action" value="generate">Generate recommendations</button></form>
+  <p class="small text-muted">These actions record status only. Contact the supplier to place the order, receive delivered stock through Inventory, then mark the recommendation complete. Active recommendations prevent duplicate suggestions.</p>
+  <div class="table-responsive"><table class="table table-striped align-middle"><thead><tr><th>Product</th><th>Supplier</th><th>Order date</th><th>Quantity</th><th>Estimated total</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+  {% for r in recommendations %}<tr><td>{{ r.product.productName }}</td><td>{{ r.supplier.supplierName }}</td><td>{{ r.recommendedOrderDate.strftime('%Y-%m-%d') }}</td><td>{{ r.recommendedQuantity }}</td><td>${{ '%.2f'|format(r.estimatedUnitCost * r.recommendedQuantity) }}</td><td>{{ r.status|title }}</td><td>
+    <form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="recommendation_id" value="{{ r.id }}">
+    {% if r.status == 'pending' %}<button class="btn btn-sm btn-primary" name="action" value="approve">Approve</button>{% elif r.status == 'approved' %}<button class="btn btn-sm btn-primary" name="action" value="order">Mark ordered</button>{% endif %}
+    {% if r.status == 'ordered' %}<button class="btn btn-sm btn-primary" name="action" value="complete">Mark complete</button>{% endif %}
+    {% if r.status in ['pending', 'approved'] %}<button class="btn btn-sm btn-outline-danger" name="action" value="cancel">Cancel</button>{% endif %}
+    </form>
+  </td></tr>{% else %}<tr><td colspan="7">No recommendations yet. Generate suggestions from current inventory.</td></tr>{% endfor %}
+  </tbody></table></div>
+</div>
+{% endblock %}

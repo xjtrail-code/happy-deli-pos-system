@@ -1,244 +1,493 @@
+
 {% extends "base.html" %}
 
-{% block title %}Happy Deli POS{% endblock %}
+{% block title %}POS Checkout | Happy Deli Junco{% endblock %}
 
 {% block content %}
-    <h2>Checkout</h2>
 
-    <!-- PRODUCT SEARCH -->
-    <h3>Add Product</h3>
 
-    <label for="productSearch">Barcode or Product Name:</label>
-    <input type="text" id="productSearch" placeholder="Scan barcode or enter product name" autofocus>
-    <button type="button" id="addItemButton">Add Item</button>
 
-    <hr>
+<div class="container-fluid py-4 pos-page">
 
-    <!-- CURRENT TRANSACTION -->
-    <h3>Current Transaction</h3>
+    <!-- HEADER -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">
+                <i class="bi bi-calculator me-2"></i>
+                POS Checkout
+            </h2>
+            <p class="text-muted mb-0">
+                Process customer purchases quickly and accurately.
+            </p>
+        </div>
 
-    <table border="1">
-        <thead>
-            <tr>
-                <th>Product</th>
-                <th>Quantity</th>
-                <th>Price</th>
-                <th>Total</th>
-            </tr>
-        </thead>
-        <tbody id="cart"></tbody>
-    </table>
-
-    <hr>
-
-    <!-- TRANSACTION TOTAL -->
-    <h3>Transaction Total</h3>
-
-    <p>Subtotal: $<span id="subtotal">0.00</span></p>
-    <p>Tax: $<span id="tax">0.00</span></p>
-    <h3>Total: $<span id="total">0.00</span></h3>
-
-    <title>Happy Deli - POS Checkout</title>
-
-    <!-- PAYMENT -->
-    <h3>Payment</h3>
-
-    <button type="button" id="cashButton">Cash</button>
-    <button type="button" id="cardButton">Card</button>
-
-    <p>Payment Method: <strong><span id="paymentMethod">None Selected</span></strong></p>
-
-    <!-- CASH PAYMENT -->
-    <div id="cashSection" style="display: none;">
-        <label for="cashReceived">Cash Received:</label>
-        <input type="number" id="cashReceived" min="0" step="0.01" placeholder="0.00">
-        <p>Change Due: $<span id="changeDue">0.00</span></p>
+        {% if g.user.role == 'admin' %}
+        <a href="{{ url_for('admin_dashboard') }}"
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-2"></i>
+            Back to Dashboard
+        </a>
+        {% else %}
+        <a href="{{ url_for('workspace') }}"
+           class="btn btn-outline-secondary">
+            Workspace
+        </a>
+        {% endif %}
     </div>
 
-    <br>
+    <!-- STATUS MESSAGE -->
+    <div id="posAlert" class="alert d-none" role="alert"></div>
 
-    <button type="button" id="completeSaleButton">Complete Sale</button>
-    <button type="button" id="voidTransactionButton">Void Transaction</button>
+    <div class="row g-4">
 
+        <!-- LEFT: PRODUCTS AND CART -->
+        <div class="col-12 col-xl-8">
 
-    {% if g.user.role == 'admin' %}
-        <a href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a>
-    {% endif %}
+            <!-- PRODUCT SEARCH -->
+            <div class="card pos-card mb-4">
+                <div class="card-header">
+                    <h5 class="fw-bold mb-0">
+                        <i class="bi bi-upc-scan me-2"></i>
+                        Add Product
+                    </h5>
+                </div>
 
-    {% include '_logout.html' %}
+                <div class="card-body p-4">
+                    <label for="productSearch"
+                           class="form-label fw-semibold">
+                        Barcode or Product Name
+                    </label>
+
+                    <div class="row g-2">
+                        <div class="col-12 col-md">
+                            <input type="text"
+                                   id="productSearch"
+                                   class="form-control pos-input"
+                                   placeholder="Scan barcode or enter product name"
+                                   autocomplete="off"
+                                   autofocus>
+                        </div>
+
+                        <div class="col-12 col-md-auto">
+                            <button type="button"
+                                    id="addItemButton"
+                                    class="btn pos-primary pos-btn px-4 w-100">
+                                <i class="bi bi-plus-lg me-2"></i>
+                                Add Item
+                            </button>
+                        </div>
+                    </div>
+
+                    <small class="text-muted d-block mt-2">
+                        Scan a product or press Enter to add it to the transaction.
+                    </small>
+                </div>
+            </div>
+
+            <!-- CURRENT TRANSACTION -->
+            <div class="card pos-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0">
+                        <i class="bi bi-cart3 me-2"></i>
+                        Current Transaction
+                    </h5>
+
+                    <span class="badge text-bg-light border"
+                          id="cartCount">
+                        0 Items
+                    </span>
+                </div>
+
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table pos-table mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Quantity</th>
+                                    <th>Price</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+
+                            <tbody id="cart"></tbody>
+                        </table>
+                    </div>
+
+                    <div id="emptyCart" class="empty-cart">
+                        <i class="bi bi-cart-x d-block mb-2"></i>
+                        <h6 class="fw-semibold">
+                            No products added yet
+                        </h6>
+                        <small>
+                            Scan or search for a product to begin checkout.
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: TOTALS AND PAYMENT -->
+        <div class="col-12 col-xl-4">
+
+            <div class="card pos-card">
+                <div class="card-header">
+                    <h5 class="fw-bold mb-0">
+                        <i class="bi bi-receipt me-2"></i>
+                        Order Summary
+                    </h5>
+                </div>
+
+                <div class="card-body p-4">
+
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="text-muted">Subtotal</span>
+                        <span class="fw-semibold">
+                            $<span id="subtotal">0.00</span>
+                        </span>
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-4">
+                        <span class="text-muted">Tax (6.35%)</span>
+                        <span class="fw-semibold">
+                            $<span id="tax">0.00</span>
+                        </span>
+                    </div>
+
+                    <!-- TOTAL -->
+                    <div class="pos-total mb-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="fw-semibold">Total Due</span>
+                            <h2 class="fw-bold mb-0">
+                                $<span id="total">0.00</span>
+                            </h2>
+                        </div>
+                    </div>
+
+                    <!-- PAYMENT -->
+                    <h5 class="fw-bold mb-3">
+                        Payment Method
+                    </h5>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <button type="button"
+                                    id="cashButton"
+                                    class="payment-choice w-100">
+                                <i class="bi bi-cash-stack me-2"></i>
+                                Cash
+                            </button>
+                        </div>
+
+                        <div class="col-6">
+                            <button type="button"
+                                    id="cardButton"
+                                    class="payment-choice w-100">
+                                <i class="bi bi-credit-card me-2"></i>
+                                Card
+                            </button>
+                        </div>
+                    </div>
+
+                    <p class="small text-muted mb-4">
+                        Selected:
+                        <strong id="paymentMethod">
+                            None Selected
+                        </strong>
+                    </p>
+
+                    <!-- CASH PAYMENT -->
+                    <div id="cashSection"
+                         class="p-3 rounded mb-4 pos-cash-section">
+
+                        <label for="cashReceived"
+                               class="form-label fw-semibold">
+                            Cash Received
+                        </label>
+
+                        <div class="input-group mb-3">
+                            <span class="input-group-text">$</span>
+                            <input type="number"
+                                   id="cashReceived"
+                                   class="form-control pos-input"
+                                   min="0"
+                                   step="0.01"
+                                   placeholder="0.00">
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <span class="fw-semibold">Change Due</span>
+                            <span class="fw-bold text-success">
+                                $<span id="changeDue">0.00</span>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- ACTIONS -->
+                    <button type="button"
+                            id="completeSaleButton"
+                            class="btn btn-success pos-btn w-100 mb-3">
+                        <i class="bi bi-check-circle me-2"></i>
+                        Complete Sale
+                    </button>
+
+                    <button type="button"
+                            id="voidTransactionButton"
+                            class="btn btn-outline-danger pos-btn w-100">
+                        <i class="bi bi-x-circle me-2"></i>
+                        Void Transaction
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="mt-4">
+        {% include '_logout.html' %}
+    </div>
+
+</div>
+
 {% endblock %}
 
 {% block scripts %}
+
+{{ super() }}
+
 <script>
+let cart = [];
+let paymentMethod = null;
 
-    let cart = [];
-    let paymentMethod = null;
+const taxRate = 0.0635;
+const $ = id => document.getElementById(id);
 
-    const quantityInput = document.getElementById("productQuantity");
-    // Connecticut sales tax
-    const taxRate = 0.0635;
+function showAlert(message, type = "danger") {
+    const alertBox = $("posAlert");
+    alertBox.className = "alert alert-" + type;
+    alertBox.textContent = message;
+}
 
-    const $ = id => document.getElementById(id);
+function clearAlert() {
+    $("posAlert").className = "alert d-none";
+}
 
-    function displayCart() {
-        const cartTable = $("cart");
-        cartTable.innerHTML = "";
+function displayCart() {
+    const cartTable = $("cart");
+    cartTable.innerHTML = "";
 
-        for (let item of cart) {
-            const row = document.createElement("tr");
-            row.innerHTML = `
-                <td>${item.name}</td>
-                <td>${item.quantity}</td>
-                <td>$${item.price.toFixed(2)}</td>
-                <td>$${(item.price * item.quantity).toFixed(2)}</td>
-            `;
-            cartTable.appendChild(row);
-        }
+    for (let item of cart) {
+        const row = document.createElement("tr");
+
+        const nameCell = document.createElement("td");
+        nameCell.textContent = item.name;
+
+        const quantityCell = document.createElement("td");
+        quantityCell.textContent = item.quantity;
+
+        const priceCell = document.createElement("td");
+        priceCell.textContent = "$" + item.price.toFixed(2);
+
+        const totalCell = document.createElement("td");
+        totalCell.className = "text-end fw-semibold";
+        totalCell.textContent =
+            "$" + (item.price * item.quantity).toFixed(2);
+
+        row.append(nameCell, quantityCell, priceCell, totalCell);
+        cartTable.appendChild(row);
     }
 
-    function calculateTotals() {
-        let subtotal = 0;
-        for (let item of cart) {
-            subtotal += item.price * item.quantity;
-        }
+    const itemCount = cart.reduce(
+        (sum, item) => sum + item.quantity, 0
+    );
 
-        const tax = subtotal * taxRate;
-        const total = subtotal + tax;
+    $("cartCount").textContent =
+        itemCount + (itemCount === 1 ? " Item" : " Items");
 
-        $("subtotal").textContent = subtotal.toFixed(2);
-        $("tax").textContent = tax.toFixed(2);
-        $("total").textContent = total.toFixed(2);
+    $("emptyCart").style.display =
+        cart.length === 0 ? "block" : "none";
+}
 
-        if (paymentMethod === "Cash") {
-            calculateChange();
-        }
+function calculateTotals() {
+    let subtotal = 0;
+
+    for (let item of cart) {
+        subtotal += item.price * item.quantity;
     }
 
-    function calculateChange() {
-        const cashReceived = Number($("cashReceived").value);
-        const total = Number($("total").textContent);
+    const tax = subtotal * taxRate;
+    const total = subtotal + tax;
 
-        let change = cashReceived - total;
-        if (change < 0) change = 0;
+    $("subtotal").textContent = subtotal.toFixed(2);
+    $("tax").textContent = tax.toFixed(2);
+    $("total").textContent = total.toFixed(2);
 
-        $("changeDue").textContent = change.toFixed(2);
+    if (paymentMethod === "Cash") {
+        calculateChange();
+    }
+}
+
+function calculateChange() {
+    const cashReceived = Number($("cashReceived").value);
+    const total = Number($("total").textContent);
+
+    const change = Math.max(0, cashReceived - total);
+    $("changeDue").textContent = change.toFixed(2);
+}
+
+function resetTransaction() {
+    cart = [];
+    paymentMethod = null;
+
+    displayCart();
+    calculateTotals();
+
+    $("paymentMethod").textContent = "None Selected";
+    $("cashSection").style.display = "none";
+    $("cashReceived").value = "";
+    $("changeDue").textContent = "0.00";
+
+    $("cashButton").classList.remove("active");
+    $("cardButton").classList.remove("active");
+
+    $("productSearch").value = "";
+    $("productSearch").focus();
+}
+
+// ADD ITEM
+$("addItemButton").addEventListener("click", function () {
+    clearAlert();
+
+    const search = $("productSearch").value.trim();
+    if (!search) return;
+
+    fetch("/product-lookup/" + encodeURIComponent(search))
+        .then(response => response.json())
+        .then(product => {
+            if (!product.found) {
+                showAlert("Product not found.");
+                return;
+            }
+
+            const existingItem = cart.find(
+                item => item.barcode === search
+            );
+
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cart.push({
+                    barcode: search,
+                    name: product.name,
+                    price: Number(product.price),
+                    quantity: 1
+                });
+            }
+
+            displayCart();
+            calculateTotals();
+
+            $("productSearch").value = "";
+            $("productSearch").focus();
+        })
+        .catch(error => {
+            console.error(error);
+            showAlert("Unable to add product.");
+        });
+});
+
+// CASH PAYMENT
+$("cashButton").addEventListener("click", function () {
+    paymentMethod = "Cash";
+
+    $("paymentMethod").textContent = "Cash";
+    $("cashSection").style.display = "block";
+
+    $("cashButton").classList.add("active");
+    $("cardButton").classList.remove("active");
+
+    $("cashReceived").focus();
+});
+
+// CARD PAYMENT
+$("cardButton").addEventListener("click", function () {
+    paymentMethod = "Card";
+
+    $("paymentMethod").textContent = "Card";
+    $("cashSection").style.display = "none";
+
+    $("cashReceived").value = "";
+    $("changeDue").textContent = "0.00";
+
+    $("cardButton").classList.add("active");
+    $("cashButton").classList.remove("active");
+});
+
+$("cashReceived").addEventListener("input", calculateChange);
+
+// COMPLETE SALE
+$("completeSaleButton").addEventListener("click", function () {
+    clearAlert();
+
+    if (cart.length === 0) {
+        showAlert("Please add a product before completing the sale.");
+        return;
     }
 
-    function resetTransaction() {
-        cart = [];
-        paymentMethod = null;
-
-        displayCart();
-        calculateTotals();
-
-        $("paymentMethod").textContent = "None Selected";
-        $("cashSection").style.display = "none";
-        $("cashReceived").value = "";
-        $("changeDue").textContent = "0.00";
-        $("productSearch").focus();
+    if (paymentMethod === null) {
+        showAlert("Please select Cash or Card.");
+        return;
     }
 
-    // ADD ITEM
-    $("addItemButton").addEventListener("click", function () {
+    if (
+        paymentMethod === "Cash" &&
+        Number($("cashReceived").value) <
+        Number($("total").textContent)
+    ) {
+        showAlert("Cash received is less than the total due.");
+        return;
+    }
 
-        const search = $("productSearch").value.trim();
-        if (!search) return;
+    const formData = new FormData();
+    formData.append("csrf_token", "{{ csrf_token() }}");
+    formData.append("cart", JSON.stringify(cart));
+    formData.append("total", $("total").textContent);
+    formData.append("payment_method", paymentMethod);
 
-        fetch("/product-lookup/" + encodeURIComponent(search))
-            .then(response => response.json())
-            .then(product => {
-
-                if (!product.found) {
-                    alert("Product not found.");
-                    return;
-                }
-
-                const existingItem = cart.find(item => item.barcode === search);
-
-                if (existingItem) {
-                    existingItem.quantity += 1;
-                } else {
-                    cart.push({
-                        barcode: search,
-                        name: product.name,
-                        price: Number(product.price),
-                        quantity: 1
-                    });
-                }
-
-                displayCart();
-                calculateTotals();
-
-                $("productSearch").value = "";
-                $("productSearch").focus();
-            })
-            .catch(error => {
-                console.error(error);
-                alert("Unable to add product.");
-            });
-    });
-
-    // CASH PAYMENT
-    $("cashButton").addEventListener("click", function () {
-        paymentMethod = "Cash";
-        $("paymentMethod").textContent = "Cash";
-        $("cashSection").style.display = "block";
-        $("cashReceived").focus();
-    });
-
-    // CARD PAYMENT
-    $("cardButton").addEventListener("click", function () {
-        paymentMethod = "Card";
-        $("paymentMethod").textContent = "Card";
-        $("cashSection").style.display = "none";
-        $("cashReceived").value = "";
-        $("changeDue").textContent = "0.00";
-    });
-
-    $("cashReceived").addEventListener("input", calculateChange);
-
-    // COMPLETE SALE
-    $("completeSaleButton").addEventListener("click", function () {
-
-        if (cart.length === 0) return;
-
-        if (paymentMethod === null) {
-            alert("Please select Cash or Card.");
-            return;
+    fetch("/complete-sale", {
+        method: "POST",
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            resetTransaction();
+            showAlert("Sale completed successfully!", "success");
+        } else {
+            showAlert(data.message || "Unable to complete sale.");
         }
-
-        const formData = new FormData();
-        formData.append("csrf_token", "{{ csrf_token() }}");
-        formData.append("cart", JSON.stringify(cart));
-        formData.append("total", $("total").textContent);
-        formData.append("payment_method", paymentMethod);
-
-        fetch("/complete-sale", { method: "POST", body: formData })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    alert("Sale completed!");
-                    resetTransaction();
-                } else {
-                    alert("Unable to complete sale.");
-                }
-            })
-            .catch(error => {
-                console.error(error);
-                alert("Unable to complete sale.");
-            });
+    })
+    .catch(error => {
+        console.error(error);
+        showAlert("Unable to complete sale.");
     });
+});
 
-    // VOID TRANSACTION
-    $("voidTransactionButton").addEventListener("click", resetTransaction);
+// VOID TRANSACTION
+$("voidTransactionButton").addEventListener("click", function () {
+    resetTransaction();
+    clearAlert();
+});
 
-    // ENTER KEY = ADD ITEM
-    $("productSearch").addEventListener("keydown", function (event) {
-        if (event.key === "Enter") {
-            event.preventDefault();
-            $("addItemButton").click();
-        }
-    });
+// ENTER KEY = ADD ITEM
+$("productSearch").addEventListener("keydown", function (event) {
+    if (event.key === "Enter") {
+        event.preventDefault();
+        $("addItemButton").click();
+    }
+});
 
+displayCart();
 </script>
+
 {% endblock %}
