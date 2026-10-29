@@ -22,8 +22,31 @@
     <div class="container-fluid h-100">
         <div class="row h-100 align-items-center flex-nowrap">
             <div class="col d-flex align-items-center">
-                <div class="store-logo"><i class="bi bi-shop"></i></div>
-                <div class="store-info"><div class="store-name">Happy Deli Junco</div></div>
+
+                {% if request.endpoint != 'product_entry' %}
+                <button
+                    class="navbar-toggler sidebar-toggler"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#sidebarNav"
+                    aria-controls="sidebarNav"
+                    aria-expanded="false"
+                    aria-label="Toggle navigation"
+                >
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                {% endif %}
+
+                <div class="store-logo">
+                    <i class="bi bi-shop"></i>
+                </div>
+
+                <div class="store-info">
+                    <div class="store-name">
+                        Happy Deli Junco
+                    </div>
+                </div>
+
             </div>
 
             <div class="col-auto">
@@ -65,11 +88,23 @@
 <div class="page-wrapper{% if request.endpoint == 'product_entry' %} page-wrapper-no-sidebar{% endif %}">
     {% if request.endpoint != 'product_entry' %}
     <aside class="sidebar">
-        <nav class="sidebar-nav">
-            {% if g.user.role == 'admin' %}
-            <a href="{{ url_for('admin_dashboard') }}"
-               class="sidebar-link {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
-                <i class="bi bi-house-fill sidebar-icon"></i><span>Admin Dashboard</span>
+
+        <nav class="sidebar-nav collapse" id="sidebarNav">
+
+
+            <!-- DASHBOARD -->
+            <a
+                href="{{ url_for('admin_dashboard') }}"
+                class="sidebar-link
+                {% if request.endpoint == 'admin_dashboard' %}
+                    active
+                {% endif %}"
+            >
+
+                <i class="bi bi-house-fill sidebar-icon"></i>
+
+                <span>Admin Dashboard</span>
+
             </a>
             {% endif %}
 
@@ -125,6 +160,33 @@
     updateDateTime();
     setInterval(updateDateTime, 1000);
 </script>
-{% block scripts %}{% endblock %}
+
+
+<!-- Close sidebar menu when clicking outside of it -->
+<script>
+
+    document.addEventListener("click", function (event) {
+
+        const nav = document.getElementById("sidebarNav");
+
+        if (!nav || !nav.classList.contains("show")) {
+            return;
+        }
+
+        const clickedInsideNav = nav.contains(event.target);
+        const clickedToggler = event.target.closest(".sidebar-toggler");
+
+        if (!clickedInsideNav && !clickedToggler) {
+            bootstrap.Collapse.getOrCreateInstance(nav, { toggle: false }).hide();
+        }
+
+    });
+
+</script>
+
+
+{% block scripts %}
+{% endblock %}
+
 </body>
 </html>

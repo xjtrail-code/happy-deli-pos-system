@@ -1105,9 +1105,157 @@ body:has(.login-page) {
     .product-entry-form { padding: 18px; }
 }
 
+/* ========================================================= */
+/* SIDEBAR TOGGLER + DROPDOWN SIDEBAR                        */
+/* ========================================================= */
+
+/* Toggler button (white icon for the dark header) */
+.sidebar-toggler {
+    --bs-navbar-toggler-padding-x: 0.6rem;
+    --bs-navbar-toggler-padding-y: 0.4rem;
+    --bs-navbar-toggler-border-radius: 8px;
+    --bs-navbar-toggler-icon-bg: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+
+    padding: var(--bs-navbar-toggler-padding-y) var(--bs-navbar-toggler-padding-x);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: var(--bs-navbar-toggler-border-radius);
+    background: transparent;
+
+    margin-left: 20px;
+    margin-right: 6px;          /* space before the logo (logo adds its own 20px too) */
+    flex-shrink: 0;
+}
+
+.sidebar-toggler:focus {
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.25);
+}
+
+/* Aside becomes a zero-height anchor under the header */
+.sidebar {
+    width: 260px;
+    bottom: auto;
+    background: transparent;
+    pointer-events: none;
+}
+
+/* The nav is the visible dropdown panel */
+.sidebar-nav {
+    pointer-events: auto;
+    background-color: #123a60;
+    max-height: calc(100vh - 62px);
+    overflow-y: auto;
+    border-radius: 0 0 12px 0;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+}
+
+.sidebar-nav.collapsing {
+    transition-duration: 0.25s;
+}
+
+/* Links need a real height now that the nav is auto-height */
+.sidebar-link {
+    flex: 0 0 auto;
+    height: 52px;
+    max-height: none;
+    justify-content: flex-start;
+    padding: 0 24px;
+}
+
+.sidebar-link span {
+    display: inline;            /* keep labels visible on small screens */
+}
+
+.sidebar-icon {
+    margin-right: 16px;
+}
+
+/* Content now uses the full width */
+.main-content {
+    margin-left: 0;
+    width: 100%;
+}
+
+/* Reports & Analytics page */
+.reports-page { color:#102f55; }
+.reports-page .reports-heading { font-size:clamp(1.45rem,2vw,1.9rem); letter-spacing:-.5px; }
+.reports-page .reports-subtitle { color:#647b9b; }
+.reports-page .reports-period { min-height:46px; border-color:#d8e4f2; color:#153b68; background:#fff; }
+.reports-page .report-card { height:100%; border:1px solid #dce7f3; border-radius:9px; box-shadow:0 2px 8px rgba(18,58,96,.025); background:#fff; }
+.reports-page .report-card .card-body { padding:16px; }
+.reports-page .metric-card { min-height:142px; }
+.reports-page .metric-label { font-size:.91rem; font-weight:650; color:#25486f; }
+.reports-page .metric-value { margin:10px 0 7px; font-size:clamp(1.45rem,2vw,1.85rem); line-height:1.2; font-weight:750; letter-spacing:-.5px; color:#102f55; overflow-wrap:anywhere; }
+.reports-page .metric-icon { display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:50%; color:#fff; font-size:1.2rem; flex-shrink:0; }
+.reports-page .metric-sales { background:#effbf5; }
+.reports-page .metric-sales .metric-icon { background:#17a76b; }
+.reports-page .metric-profit { background:#f0f7ff; }
+.reports-page .metric-profit .metric-icon { background:#2585f5; }
+.reports-page .metric-margin { background:#f7f3ff; }
+.reports-page .metric-margin .metric-icon { background:#8250df; }
+.reports-page .metric-orders { background:#fff8ef; }
+.reports-page .metric-orders .metric-icon { background:#ff8b1f; }
+.reports-page .metric-note { color:#7185a2; font-size:.78rem; }
+.reports-page .report-section-title { font-size:1.08rem; font-weight:750; letter-spacing:-.25px; margin:0; color:#102f55; }
+.reports-page .report-card-header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.reports-page .chart-wrap { position:relative; height:245px; }
+.reports-page .chart-wrap.trend-chart { height:230px; }
+.reports-page .product-row { display:grid; grid-template-columns:24px minmax(0,1fr) 76px 86px; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid #edf2f8; }
+.reports-page .product-row:last-child { border-bottom:0; }
+.reports-page .product-rank { font-weight:700; color:#183d69; text-align:center; }
+.reports-page .product-name { font-size:.84rem; color:#16385f; overflow-wrap:anywhere; }
+.reports-page .product-bar { height:7px; background:#edf2f8; border-radius:99px; overflow:hidden; margin-top:7px; }
+.reports-page .product-bar-fill { height:100%; background:#1877f2; border-radius:99px; }
+.reports-page .product-units { color:#647d9f; font-size:.78rem; white-space:nowrap; text-align:right; }
+.reports-page .product-total { font-size:.82rem; font-weight:700; text-align:right; white-space:nowrap; }
+.reports-page .report-table { --bs-table-bg:transparent; --bs-table-border-color:#e9f0f7; margin-bottom:0; font-size:.85rem; }
+.reports-page .report-table thead th { background:#f2f7fc; color:#23466e; font-weight:700; white-space:nowrap; }
+.reports-page .report-table th,.reports-page .report-table td { padding:10px 9px; vertical-align:middle; }
+.reports-page .category-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; }
+.reports-page .margin-layout { display:flex; align-items:center; justify-content:center; gap:24px; min-height:190px; }
+.reports-page .margin-chart { width:min(42%,170px); height:170px; position:relative; flex-shrink:0; }
+.reports-page .margin-legend { flex:1; min-width:0; }
+.reports-page .legend-row { display:flex; justify-content:space-between; gap:12px; padding:9px 0; border-bottom:1px solid #edf2f8; font-size:.85rem; }
+.reports-page .legend-row:last-child { border-bottom:0; }
+.reports-page .legend-name { color:#526f96; }
+.reports-page .report-empty { color:#7185a2; font-size:.88rem; }
+.reports-page .details-btn { width:100%; display:flex; align-items:center; justify-content:center; gap:10px; padding:12px 16px; background:#1675f8; border-color:#1675f8; font-weight:600; }
+.reports-page .details-btn:hover { background:#0d62d8; border-color:#0d62d8; }
+@media (max-width:767.98px) {
+ .reports-page .report-card .card-body { padding:14px; }
+ .reports-page .chart-wrap { height:230px; }
+ .reports-page .product-row { grid-template-columns:20px minmax(0,1fr) 60px; gap:7px; }
+ .reports-page .product-total { display:none; }
+ .reports-page .margin-layout { gap:14px; }
+ .reports-page .margin-chart { width:42%; height:145px; }
+ .reports-page .legend-row { font-size:.8rem; }
+}
+@media (max-width:420px) {
+ .reports-page .metric-card { min-height:125px; }
+ .reports-page .metric-icon { width:36px; height:36px; }
+ .reports-page .metric-label { font-size:.8rem; }
+ .reports-page .metric-value { font-size:1.35rem; }
+ .reports-page .margin-layout { flex-direction:column; }
+ .reports-page .margin-chart { width:150px; height:150px; }
+ .reports-page .margin-legend { width:100%; }
+}
+
+/* Dashboard category colors: classes instead of dynamic inline styles. */
+.category-color-1, .margin-color-1 { color: #1877f2; background-color: #1877f2; }
+.category-color-2, .margin-color-2 { color: #17b978; background-color: #17b978; }
+.category-color-3, .margin-color-3 { color: #8250df; background-color: #8250df; }
+.category-color-4, .margin-color-4 { color: #ff8b1f; background-color: #ff8b1f; }
+.category-color-5, .margin-color-5 { color: #12a8b4; background-color: #12a8b4; }
+.category-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+
+
+/* Added Daily Sales and Payment Method Breakdown charts */
+.added-chart-wrap {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
 /* =========================================
    SUPPLIER MANAGEMENT PAGE
-========================================= */
 .supplier-page { color: #123e6b; }
 
 .supplier-heading {

@@ -1,445 +1,309 @@
-
 {% extends "base.html" %}
 
 {% block title %}Reports & Analytics | Happy Deli Junco{% endblock %}
 
 {% block content %}
-
-<div class="container-fluid py-4 reports-page">
-
-    <!-- PAGE HEADER -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+<div class="container-fluid py-3 reports-page">
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
         <div>
-            <h2 class="fw-bold mb-1">Reports & Analytics</h2>
-            <p class="text-muted mb-0">
-                Track sales, payments, and business performance.
-            </p>
+            <h2 class="reports-heading fw-bold mb-1"><i class="bi bi-list me-2 d-none"></i>Reports &amp; Analytics</h2>
         </div>
-
-        <a href="{{ url_for('admin_dashboard') }}"
-           class="btn btn-outline-primary">
-            <i class="bi bi-arrow-left me-2"></i>
-            Back to Dashboard
-        </a>
-    </div>
-
-    <!-- SALES OVERVIEW HEADER -->
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <div>
-                <h5 class="fw-bold mb-1">Sales Overview</h5>
-                <small class="text-muted">
-                    Summary of completed transactions
-                </small>
-            </div>
-
-            <span class="badge rounded-pill px-3 py-2 reports-all-transactions-badge">
-                All Transactions
+        <div class="d-flex align-items-center gap-2">
+            <span class="btn reports-period d-inline-flex align-items-center gap-2" aria-label="Report period">
+                <i class="bi bi-calendar3"></i>
+                {% if transactions %}All completed transactions{% else %}All transactions{% endif %}
+                <i class="bi bi-chevron-down ms-1"></i>
             </span>
         </div>
     </div>
 
-    <!-- SUMMARY CARDS -->
-    <div class="row g-3 mb-4">
-
-        <!-- TOTAL REVENUE -->
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <span class="text-muted fw-semibold">
-                            Total Revenue
-                        </span>
-                        <i class="bi bi-currency-dollar fs-4 text-success"></i>
-                    </div>
-
-                    <h3 class="fw-bold text-success mb-1">
-                        ${{ "%.2f"|format(total_revenue|default(0, true)) }}
-                    </h3>
-
-                    <small class="text-muted">
-                        Total sales generated
-                    </small>
-                </div>
-            </div>
+    <!-- KPI cards: values are from the reports route -->
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-xl-3">
+            <section class="report-card metric-card metric-sales"><div class="card-body">
+                <div class="d-flex align-items-center gap-3"><span class="metric-icon"><i class="bi bi-wallet2"></i></span><span class="metric-label">Total Sales</span></div>
+                <div class="metric-value">${{ "%.2f"|format(total_revenue|default(0, true)) }}</div>
+                <div class="metric-note"><i class="bi bi-receipt me-1"></i>Completed transactions</div>
+            </div></section>
         </div>
-
-        <!-- TOTAL TRANSACTIONS -->
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <span class="text-muted fw-semibold">
-                            Transactions
-                        </span>
-                        <i class="bi bi-receipt fs-4 text-primary"></i>
-                    </div>
-
-                    <h3 class="fw-bold mb-1">
-                        {{ total_transactions|default(0, true) }}
-                    </h3>
-
-                    <small class="text-muted">
-                        Completed purchases
-                    </small>
-                </div>
-            </div>
+        <div class="col-6 col-xl-3">
+            <section class="report-card metric-card metric-profit"><div class="card-body">
+                <div class="d-flex align-items-center gap-3"><span class="metric-icon"><i class="bi bi-graph-up-arrow"></i></span><span class="metric-label">Total Profit</span></div>
+                <div class="metric-value">${{ "%.2f"|format(total_profit|default(0, true)) }}</div>
+                <div class="metric-note">Sales minus recorded item costs</div>
+            </div></section>
         </div>
-
-        <!-- CASH SALES -->
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <span class="text-muted fw-semibold">
-                            Cash Sales
-                        </span>
-                        <i class="bi bi-cash-stack fs-4 text-success"></i>
-                    </div>
-
-                    <h3 class="fw-bold mb-1">
-                        ${{ "%.2f"|format(cash_sales|default(0, true)) }}
-                    </h3>
-
-                    <small class="text-muted">
-                        Cash payments received
-                    </small>
-                </div>
-            </div>
+        <div class="col-6 col-xl-3">
+            <section class="report-card metric-card metric-margin"><div class="card-body">
+                <div class="d-flex align-items-center gap-3"><span class="metric-icon"><i class="bi bi-percent"></i></span><span class="metric-label">Profit Margin</span></div>
+                <div class="metric-value">{{ "%.1f"|format(profit_margin|default(0, true)) }}%</div>
+                <div class="metric-note">Gross profit ÷ item sales</div>
+            </div></section>
         </div>
-
-        <!-- CARD SALES -->
-        <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <span class="text-muted fw-semibold">
-                            Card Sales
-                        </span>
-                        <i class="bi bi-credit-card fs-4 text-primary"></i>
-                    </div>
-
-                    <h3 class="fw-bold mb-1">
-                        ${{ "%.2f"|format(card_sales|default(0, true)) }}
-                    </h3>
-
-                    <small class="text-muted">
-                        Card payments received
-                    </small>
-                </div>
-            </div>
+        <div class="col-6 col-xl-3">
+            <section class="report-card metric-card metric-orders"><div class="card-body">
+                <div class="d-flex align-items-center gap-3"><span class="metric-icon"><i class="bi bi-receipt-cutoff"></i></span><span class="metric-label">Total Orders</span></div>
+                <div class="metric-value">{{ total_transactions|default(0, true) }}</div>
+                <div class="metric-note">Completed transactions</div>
+            </div></section>
         </div>
-
     </div>
 
-    <!-- SALES CHARTS -->
-    <div class="row g-3 mb-4">
+    <!-- Trend and best sellers -->
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-xl-6">
+            <section class="report-card"><div class="card-body">
+                <div class="report-card-header"><h3 class="report-section-title">Sales &amp; Profit Trend</h3><div class="small d-flex gap-3"><span><i class="bi bi-circle-fill text-primary me-1"></i>Sales</span><span><i class="bi bi-circle-fill text-success me-1"></i>Profit</span></div></div>
+                <div class="chart-wrap trend-chart"><canvas id="salesChart" aria-label="Daily sales chart" role="img"></canvas></div>
+            </div></section>
+        </div>
+        <div class="col-12 col-xl-6">
+            <section class="report-card"><div class="card-body">
+                <div class="report-card-header"><h3 class="report-section-title">Top Selling Products</h3><span class="badge text-bg-light border">By sales</span></div>
+                {% if top_products %}
+                {% for product in top_products %}
+                <div class="product-row">
+                    <div class="product-rank">{{ loop.index }}</div>
+                    <div class="min-w-0">
+                        <div class="product-name">{{ product.name }}</div>
+                        <div class="product-bar"><div class="product-bar-fill" data-sales="{{ product.sales }}" data-max-sales="{{ largest_product_sales }}"></div></div>
+                    </div>
+                    <div class="product-units">{{ product.units }} units</div>
+                    <div class="product-total">${{ "%.2f"|format(product.sales) }}</div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="py-3 text-center report-empty"><i class="bi bi-box-seam fs-2 d-block mb-2"></i>No product sales yet.</div>
+                {% endif %}
+            </div></section>
+        </div>
+    </div>
 
-        <!-- DAILY SALES CHART -->
+    <!-- Profit and margin panels -->
+    <div class="row g-3 mb-3">
         <div class="col-12 col-xl-7">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body p-4">
-
-                    <h5 class="fw-bold mb-1">
-                        <i class="bi bi-bar-chart-fill me-2 text-primary"></i>
-                        Daily Sales
-                    </h5>
-
-                    <p class="text-muted small mb-4">
-                        Revenue generated each day
-                    </p>
-
-                    <div class="reports-chart-container">
-                        <canvas id="salesChart"></canvas>
-                    </div>
-
+            <section class="report-card"><div class="card-body">
+                <div class="report-card-header"><h3 class="report-section-title">Profit &amp; Loss Summary</h3><i class="bi bi-table text-primary"></i></div>
+                <div class="table-responsive">
+                    <table class="table report-table align-middle">
+                        <thead><tr><th>Category</th><th class="text-end">Sales</th><th class="text-end">Cost of Goods</th><th class="text-end">Gross Profit</th><th class="text-end">Margin</th></tr></thead>
+                        <tbody>
+                            {% for category in category_reports %}
+                            <tr>
+                                <td><span class="category-dot category-color-{{ (loop.index0 % 5) + 1 }}"></span>{{ category.name }}</td>
+                                <td class="text-end">${{ "%.2f"|format(category.sales) }}</td>
+                                <td class="text-end">${{ "%.2f"|format(category.cost) }}</td>
+                                <td class="text-end">${{ "%.2f"|format(category.profit) }}</td>
+                                <td class="text-end text-success fw-semibold">{{ "%.1f"|format(category.margin) }}%</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5" class="text-center py-4 report-empty">No transaction item data is available yet.</td></tr>
+                            {% endfor %}
+                            <tr class="fw-bold">
+                                <td>Total</td>
+                                <td class="text-end">${{ "%.2f"|format(item_sales_total|default(0, true)) }}</td>
+                                <td class="text-end">${{ "%.2f"|format(total_cost|default(0, true)) }}</td>
+                                <td class="text-end">${{ "%.2f"|format(total_profit|default(0, true)) }}</td>
+                                <td class="text-end text-success">{{ "%.1f"|format(profit_margin|default(0, true)) }}%</td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
-            </div>
+            </div></section>
         </div>
-
-        <!-- PAYMENT METHOD CHART -->
         <div class="col-12 col-xl-5">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body p-4">
-
-                    <h5 class="fw-bold mb-1">
-                        <i class="bi bi-pie-chart-fill me-2 text-primary"></i>
-                        Payment Breakdown
-                    </h5>
-
-                    <p class="text-muted small mb-4">
-                        Cash versus card revenue
-                    </p>
-
-                    <div class="reports-chart-container">
-                        <canvas id="paymentChart"></canvas>
+            <section class="report-card"><div class="card-body">
+                <div class="report-card-header"><h3 class="report-section-title">Margin Analysis</h3><i class="bi bi-pie-chart text-primary"></i></div>
+                <div class="margin-layout">
+                    <div class="margin-chart"><canvas id="paymentChart" aria-label="Category profit margin chart" role="img"></canvas></div>
+                    <div class="margin-legend">
+                        {% for category in category_reports %}
+                        <div class="legend-row"><span class="legend-name"><i class="bi bi-circle-fill me-2 margin-color-{{ (loop.index0 % 5) + 1 }}"></i>{{ category.name }}</span><strong>{{ "%.1f"|format(category.margin) }}%</strong></div>
+                        {% else %}
+                        <div class="legend-row"><span class="legend-name">No category data</span><strong>—</strong></div>
+                        {% endfor %}
+                        <div class="legend-row"><span class="legend-name">Overall margin</span><strong>{{ "%.1f"|format(profit_margin|default(0, true)) }}%</strong></div>
                     </div>
-
                 </div>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- BUSINESS PERFORMANCE -->
-    <div class="row g-3 mb-4">
-
-        <!-- PROFIT AND LOSS -->
-        <div class="col-12 col-lg-6">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body p-4">
-
-                    <h5 class="fw-bold mb-3">
-                        <i class="bi bi-graph-up-arrow me-2 text-success"></i>
-                        Profit & Loss
-                    </h5>
-
-                    <p class="text-muted mb-3">
-                        Monitor profitability, expenses,
-                        and overall business performance.
-                    </p>
-
-                    <div class="p-3 rounded reports-info-panel">
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="bi bi-info-circle text-primary"></i>
-                            <span class="small text-muted">
-                                Profit calculations will become available
-                                once product costs and operating expenses
-                                are connected.
-                            </span>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-
-        <!-- PRODUCT PERFORMANCE -->
-        <div class="col-12 col-lg-6">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-body p-4">
-
-                    <h5 class="fw-bold mb-3">
-                        <i class="bi bi-box-seam me-2 text-primary"></i>
-                        Product Performance
-                    </h5>
-
-                    <p class="text-muted mb-3">
-                        Identify best-selling products
-                        and monitor inventory performance.
-                    </p>
-
-                    <div class="p-3 rounded reports-info-panel">
-                        <div class="d-flex align-items-center gap-2">
-                            <i class="bi bi-info-circle text-primary"></i>
-                            <span class="small text-muted">
-                                Product sales rankings will become available
-                                once individual transaction items
-                                are connected.
-                            </span>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-    <!-- TRANSACTION HISTORY -->
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body p-4">
-
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-3">
-                <div>
-                    <h5 class="fw-bold mb-1">
-                        <i class="bi bi-clock-history me-2 text-primary"></i>
-                        Transaction History
-                    </h5>
-
-                    <small class="text-muted">
-                        View recorded sales transactions
-                    </small>
-                </div>
-
-                <span class="badge bg-light text-dark border px-3 py-2">
-                    {{ total_transactions|default(0, true) }}
-                    Transactions
-                </span>
-            </div>
-
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-
-                    <thead class="table-light">
-                        <tr>
-                            <th>Transaction ID</th>
-                            <th>Date & Time</th>
-                            <th>Payment Method</th>
-                            <th class="text-end">Total</th>
-                        </tr>
-                    </thead>
-
-                    <tbody>
-                       
-{% for sale in sales|default([]) %}
-<tr>
-    <td class="fw-semibold">
-        #{{ sale.transactionID }}
-    </td>
-
-    <td>
-        {{ sale.transactionDate.strftime('%m/%d/%Y %I:%M %p') if sale.transactionDate else 'N/A' }}
-    </td>
-
-    <td>
-        {% if sale.paymentMethod|lower == 'cash' %}
-            <span class="badge bg-success px-3 py-2">
-                <i class="bi bi-cash me-1"></i>
-                Cash
-            </span>
-        {% elif sale.paymentMethod|lower in ['card', 'credit', 'debit'] %}
-            <span class="badge bg-primary px-3 py-2">
-                <i class="bi bi-credit-card me-1"></i>
-                {{ sale.paymentMethod|capitalize }}
-            </span>
-        {% else %}
-            <span class="badge bg-secondary px-3 py-2">
-                {{ sale.paymentMethod or 'Unknown' }}
-            </span>
-        {% endif %}
-    </td>
-
-    <td class="text-end fw-bold">
-        ${{ "%.2f"|format(sale.totalAmount) }}
-    </td>
-</tr>
-
-{% else %}
-<tr>
-    <td colspan="4" class="text-center text-muted py-5">
-        <i class="bi bi-receipt fs-1 d-block mb-3"></i>
-        <p class="fw-semibold mb-1">
-            No transactions recorded
-        </p>
-        <small>Completed sales will appear here.</small>
-    </td>
-</tr>
-{% endfor %}
-
-                    </tbody>
-
-                </table>
-            </div>
-
+                <a href="#transaction-history" class="btn btn-primary details-btn mt-3"><i class="bi bi-file-earmark-bar-graph"></i>View Transaction Details<i class="bi bi-chevron-right ms-auto"></i></a>
+            </div></section>
         </div>
     </div>
 
+    <!-- Added charts: Daily Sales and Payment Method Breakdown -->
+    <div class="row g-3 mb-3">
+        <div class="col-12 col-xl-7">
+            <section class="report-card h-100">
+                <div class="card-body">
+                    <div class="report-card-header">
+                        <h3 class="report-section-title">
+                            <i class="bi bi-bar-chart-fill me-2"></i>Daily Sales
+                        </h3>
+                    </div>
+                    <div class="added-chart-wrap">
+                        <canvas id="dailySalesChart" aria-label="Daily sales bar chart" role="img"></canvas>
+                    </div>
+
+                </div>
+            </section>
+        </div>
+
+        <div class="col-12 col-xl-5">
+            <section class="report-card h-100">
+                <div class="card-body">
+                    <div class="report-card-header">
+                        <h3 class="report-section-title">
+                            <i class="bi bi-pie-chart-fill me-2"></i>Payment Method Breakdown
+                        </h3>
+                    </div>
+                    <div class="added-chart-wrap">
+                        <canvas id="paymentBreakdownChart" aria-label="Payment method breakdown doughnut chart" role="img"></canvas>
+                    </div>
+
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Existing transaction history retained -->
+    <section class="report-card mb-3" id="transaction-history"><div class="card-body">
+        <div class="report-card-header"><h3 class="report-section-title"><i class="bi bi-clock-history me-2"></i>Transaction History</h3><span class="small text-muted">{{ total_transactions|default(0, true) }} transactions</span></div>
+        <div class="table-responsive">
+            <table class="table table-hover report-table align-middle">
+                <thead><tr><th>Transaction ID</th><th>Date &amp; Time</th><th>Payment Method</th><th class="text-end">Total</th></tr></thead>
+                <tbody>
+                {% for sale in transactions %}
+                    <tr><td>{{ sale.transactionID }}</td><td>{{ sale.transactionDate.strftime('%m/%d/%Y %I:%M %p') if sale.transactionDate else '—' }}</td><td>{% if sale.paymentMethod == 'cash' %}<span class="badge text-bg-success">Cash</span>{% else %}<span class="badge text-bg-primary">{{ sale.paymentMethod|capitalize }}</span>{% endif %}</td><td class="text-end fw-semibold">${{ "%.2f"|format(sale.totalAmount|default(0, true)) }}</td></tr>
+                {% else %}
+                    <tr><td colspan="4" class="text-center text-muted py-4">No completed transactions yet.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div></section>
+
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-primary"><i class="bi bi-arrow-left me-2"></i>Back to Dashboard</a>
 </div>
-
 {% endblock %}
 
-
-
 {% block scripts %}
-
-{{ super() }}
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+<script id="report-data" type="application/json">{{ chart_data|tojson }}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", function () {
-
-    // DAILY SALES DATA
-    const transactions = [
-        {% for sale in sales %}
-        {
-            date: {{ sale.transactionDate.strftime('%Y-%m-%d') | tojson }},
-            amount: {{ (sale.totalAmount | float) | tojson }}
-        }{% if not loop.last %},{% endif %}
-        {% endfor %}
-    ];
-
-    const dailySales = {};
-
-    transactions.forEach(transaction => {
-        if (!dailySales[transaction.date]) {
-            dailySales[transaction.date] = 0;
+function updateProductBars() {
+            document.querySelectorAll(".product-bar-fill").forEach(bar => {
+                const sales = Number(bar.dataset.sales);
+                const maxSales = Number(bar.dataset.maxSales);
+                const percentage = Number.isFinite(sales) && Number.isFinite(maxSales) && maxSales > 0
+                    ? Math.min(100, Math.max(0, (sales / maxSales) * 100))
+                    : 0;
+                bar.style.width = percentage + "%";
+            });
         }
 
-        dailySales[transaction.date] += transaction.amount;
-    });
+        document.addEventListener('DOMContentLoaded', () => {
+    const dataEl = document.getElementById('report-data');
+    const salesCanvas = document.getElementById('salesChart');
+    const paymentCanvas = document.getElementById('paymentChart');
+    if (!dataEl || typeof Chart === 'undefined') return;
+    let data;
+    try { data = JSON.parse(dataEl.textContent || '{}'); } catch (error) { console.error('Could not read report chart data.', error); return; }
 
-    const dates = Object.keys(dailySales).sort();
-
-    // DAILY SALES BAR CHART
-    const salesCanvas = document.getElementById("salesChart");
-
-    
-if (salesCanvas && typeof Chart !== "undefined") {
-    new Chart(salesCanvas, {
-        type: "line",
-        data: {
-            labels: dates,
-            datasets: [{
-                label: "Daily Sales",
-                data: dates.map(date => dailySales[date]),
-                borderColor: "#17365d",
-                backgroundColor: "rgba(23, 54, 93, 0.12)",
-                borderWidth: 3,
-                tension: 0.3,
-                fill: true,
-                pointRadius: 5,
-                pointBackgroundColor: "#17365d"
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true
-                }
+    if (salesCanvas) {
+        new Chart(salesCanvas, {
+            type: 'line',
+            data: { labels: data.dailyLabels || [], datasets: [
+                { label: 'Sales', data: data.dailyTotals || [], borderColor: '#1877f2', backgroundColor: 'rgba(24,119,242,.10)',
+                  borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, pointBackgroundColor: '#1877f2', fill: false, tension: .32 },
+                { label: 'Profit', data: data.dailyProfits || [], borderColor: '#17b978', backgroundColor: 'rgba(23,185,120,.10)',
+                  borderWidth: 2, pointRadius: 3, pointHoverRadius: 5, pointBackgroundColor: '#17b978', fill: false, tension: .32 }
+            ] },
+            options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                plugins: { legend: { display: false }, tooltip: { callbacks: { label: context => context.dataset.label + ': $' + Number(context.parsed.y || 0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) } } },
+                scales: { x: { grid: { display: false }, ticks: { color: '#5f789a', maxRotation: 0, autoSkip: true } }, y: { beginAtZero: true, grid: { color: '#edf2f8' }, ticks: { color: '#5f789a', callback: value => '$' + value } } }
             }
-        }
-    });
-}
-
-
-    // PAYMENT BREAKDOWN CHART
-    const cashSales = {{ (cash_sales | default(0, true) | float) | tojson }};
-    const cardSales = {{ (card_sales | default(0, true) | float) | tojson }};
-
-    const paymentCanvas = document.getElementById("paymentChart");
-
-    if (paymentCanvas && typeof Chart !== "undefined") {
-        new Chart(paymentCanvas, {
-            type: "doughnut",
+        });
+    }
+    const dailySalesCanvas = document.getElementById('dailySalesChart');
+    if (dailySalesCanvas) {
+        new Chart(dailySalesCanvas, {
+            type: 'bar',
             data: {
-                labels: ["Cash", "Card"],
+                labels: data.dailyLabels || [],
                 datasets: [{
-                    data: [cashSales, cardSales],
-                    backgroundColor: [
-                        "#17365d",
-                        "#58a6ff"
-                    ],
-                    borderWidth: 2
+                    label: 'Sales ($)',
+                    data: data.dailyTotals || [],
+                    backgroundColor: '#087cf5',
+                    borderRadius: 6
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Date' },
+                        grid: { display: false }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Sales Amount ($)' },
+                        ticks: { callback: value => '$' + value }
+                    }
+                },
                 plugins: {
-                    legend: {
-                        position: "bottom"
+                    tooltip: {
+                        callbacks: {
+                            label: context => 'Sales: $' + Number(context.parsed.y || 0).toFixed(2)
+                        }
                     }
                 }
             }
         });
     }
 
+    const paymentBreakdownCanvas = document.getElementById('paymentBreakdownChart');
+    if (paymentBreakdownCanvas) {
+        const paymentValues = data.paymentTotals || [];
+        const paymentLabels = data.paymentLabels || [];
+        const hasPaymentData = paymentValues.some(value => Number(value) > 0);
+
+        new Chart(paymentBreakdownCanvas, {
+            type: 'doughnut',
+            data: {
+                labels: paymentLabels,
+                datasets: [{
+                    data: hasPaymentData ? paymentValues : [],
+                    backgroundColor: ['#123a60', '#58a6ff'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: {
+                        callbacks: {
+                            label: context => context.label + ': $' +
+                                Number(context.parsed || 0).toFixed(2)
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    if (paymentCanvas) {
+        const marginValues = data.categoryMargins || [];
+        const marginLabels = data.categoryLabels || [];
+        const hasMarginData = marginValues.some(value => Number(value) > 0);
+        new Chart(paymentCanvas, {
+            type: 'doughnut',
+            data: { labels: marginLabels, datasets: [{ data: hasMarginData ? marginValues : [1], backgroundColor: hasMarginData ? ['#1877f2', '#17b978', '#8250df', '#ff8b1f', '#12a8b4'] : ['#e5edf6'], borderWidth: 0, hoverOffset: 4 }] },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '72%', plugins: { legend: { display: false }, tooltip: { enabled: hasMarginData, callbacks: { label: context => context.label + ': ' + Number(context.parsed || 0).toFixed(1) + '%' } } } }
+        });
+    }
 });
 </script>
-
 {% endblock %}
-

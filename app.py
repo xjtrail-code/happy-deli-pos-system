@@ -639,32 +639,159 @@ def complete_sale():
 @app.route('/reports')
 @login_required(permission='reports')
 def reports():
+    from collections import defaultdict
+    from decimal import Decimal
+
+    # Only completed transactions belong in sales and profitability reports.
     transactions = db.session.scalars(
         db.select(Transaction)
         .where(Transaction.status == 'completed')
         .order_by(Transaction.transactionDate.desc())
     ).all()
 
-    total_revenue = sum(t.totalAmount for t in transactions)
+    total_revenue = sum((t.totalAmount or Decimal('0.00') for t in transactions), Decimal('0.00'))
     total_transactions = len(transactions)
 
     cash_sales = sum(
-        t.totalAmount for t in transactions
-        if t.paymentMethod == 'cash'
+        (t.totalAmount or Decimal('0.00') for t in transactions
+         if t.paymentMethod == 'cash'),
+        Decimal('0.00')
+    )
+    card_sales = sum(
+        (t.totalAmount or Decimal('0.00') for t in transactions
+         if t.paymentMethod in ('credit', 'debit')),
+        Decimal('0.00')
     )
 
-    card_sales = sum(
-        t.totalAmount for t in transactions
-        if t.paymentMethod in ('credit', 'debit')
+    # TransactionItem stores the price and cost captured at the time of sale.
+    # Use those snapshots rather than today's supplier prices.
+    category_totals = defaultdict(lambda: {
+        'sales': Decimal('0.00'),
+        'cost': Decimal('0.00'),
+        'profit': Decimal('0.00'),
+        'units': 0
+    })
+    product_totals = defaultdict(lambda: {
+        'name': 'Unknown product',
+        'units': 0,
+        'sales': Decimal('0.00')
+    })
+    daily_sales = defaultdict(lambda: Decimal('0.00'))
+    daily_profit = defaultdict(lambda: Decimal('0.00'))
+
+    item_sales_total = Decimal('0.00')
+    total_cost = Decimal('0.00')
+    total_profit = Decimal('0.00')
+
+    for transaction in transactions:
+        day = transaction.transactionDate.strftime('%b %d') if transaction.transactionDate else 'Unknown'
+        for item in transaction.items:
+            quantity = int(item.quantity or 0)
+            line_sales = item.lineTotal or Decimal('0.00')
+            line_cost = (item.unitCost or Decimal('0.00')) * quantity
+            line_profit = line_sales - line_cost
+
+            product = item.product
+            category_name = (
+                product.category.categoryName
+                if product and product.category
+                else 'Uncategorized'
+            )
+            product_name = product.productName if product else 'Unknown product'
+
+            category_totals[category_name]['sales'] += line_sales
+            category_totals[category_name]['cost'] += line_cost
+            category_totals[category_name]['profit'] += line_profit
+            category_totals[category_name]['units'] += quantity
+
+            product_totals[item.productId]['name'] = product_name
+            product_totals[item.productId]['units'] += quantity
+            product_totals[item.productId]['sales'] += line_sales
+
+            daily_sales[day] += transaction.totalAmount or Decimal('0.00')
+            daily_profit[day] += line_profit
+            item_sales_total += line_sales
+            total_cost += line_cost
+            total_profit += line_profit
+
+    profit_margin = (
+        float(total_profit / item_sales_total * Decimal('100'))
+        if item_sales_total > 0 else 0.0
     )
+
+    category_reports = []
+    for name, totals in sorted(
+        category_totals.items(),
+        key=lambda entry: entry[1]['sales'],
+        reverse=True
+    ):
+        sales_value = totals['sales']
+        category_reports.append({
+            'name': name,
+            'sales': float(sales_value),
+            'cost': float(totals['cost']),
+            'profit': float(totals['profit']),
+            'margin': float(totals['profit'] / sales_value * Decimal('100')) if sales_value > 0 else 0.0,
+            'units': totals['units']
+        })
+
+    top_products = sorted(
+        [
+            {
+                'name': item['name'],
+                'units': item['units'],
+                'sales': float(item['sales'])
+            }
+            for item in product_totals.values()
+        ],
+        key=lambda item: item['sales'],
+        reverse=True
+    )[:5]
+    largest_product_sales = max((item['sales'] for item in top_products), default=0)
+
+    # Chart labels are ISO dates, which sort chronologically; format labels for display.
+    daily_by_date = defaultdict(lambda: {'sales': Decimal('0.00'), 'profit': Decimal('0.00')})
+    for transaction in transactions:
+        if not transaction.transactionDate:
+            continue
+        day_key = transaction.transactionDate.strftime('%Y-%m-%d')
+        daily_by_date[day_key]['sales'] += transaction.totalAmount or Decimal('0.00')
+        for item in transaction.items:
+            quantity = int(item.quantity or 0)
+            daily_by_date[day_key]['profit'] += (
+                (item.lineTotal or Decimal('0.00')) -
+                (item.unitCost or Decimal('0.00')) * quantity
+            )
+
+    days = sorted(daily_by_date)
+    chart_data = {
+        'dailyLabels': [date_label for date_label in [
+            __import__('datetime').datetime.strptime(day, '%Y-%m-%d').strftime('%b %d')
+            for day in days
+        ]],
+        'dailyTotals': [float(daily_by_date[day]['sales']) for day in days],
+        'dailyProfits': [float(daily_by_date[day]['profit']) for day in days],
+        'paymentLabels': ['Cash', 'Card'],
+        'paymentTotals': [float(cash_sales), float(card_sales)],
+        'categoryLabels': [item['name'] for item in category_reports],
+        'categoryMargins': [item['margin'] for item in category_reports]
+    }
 
     return render_template(
         'reports.html',
-        sales=transactions,
+        transactions=transactions,
         total_revenue=total_revenue,
         total_transactions=total_transactions,
         cash_sales=cash_sales,
-        card_sales=card_sales
+        card_sales=card_sales,
+        total_profit=total_profit,
+        total_cost=total_cost,
+        item_sales_total=item_sales_total,
+        profit_margin=profit_margin,
+        category_reports=category_reports,
+        top_products=top_products,
+        largest_product_sales=largest_product_sales,
+        chart_data=chart_data
     )
 
    # EMPLOYEE MANAGEMENT
