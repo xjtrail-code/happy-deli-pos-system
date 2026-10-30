@@ -6,6 +6,7 @@
     <div><h1><i class="bi bi-list-ul"></i> Inventory</h1></div>
     <div class="inventory-heading-actions">
       <div class="input-group inventory-search"><span class="input-group-text"><i class="bi bi-search"></i></span><input id="inventory-search" class="form-control" type="search" placeholder="Search by product name, barcode, or category..." aria-label="Search inventory"></div>
+      {% if g.user.has_permission('products') %}<a class="btn btn-primary add-product-btn" href="{{ url_for('categories') }}"><i class="bi bi-tags-fill"></i> Manage Categories</a>{% endif %}
       {% if g.user.has_permission('products') %}<a class="btn btn-primary add-product-btn" href="{{ url_for('product_entry') }}"><i class="bi bi-plus-lg"></i> Add Product</a>{% endif %}
     </div>
   </div>

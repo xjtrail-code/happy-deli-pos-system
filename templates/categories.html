@@ -1,0 +1,263 @@
+
+{% extends "base.html" %}
+
+{% block title %}Manage Categories | Happy Deli Junco{% endblock %}
+
+{% block content %}
+<section class="categories-page">
+    <header class="categories-heading">
+        <div>
+            <h1><i class="bi bi-tags-fill me-2" aria-hidden="true"></i>Manage Categories</h1>
+            <p>Organize product categories and see which products belong to each one.</p>
+        </div>
+
+        <div class="categories-heading-actions">
+            <div class="input-group categories-search">
+                <span class="input-group-text">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                </span>
+                <input type="search" class="form-control" id="categorySearch"
+                       placeholder="Search categories..." aria-label="Search categories">
+            </div>
+
+            <button type="button" class="btn btn-primary add-category-btn"
+                    data-bs-toggle="modal" data-bs-target="#categoryModal"
+                    id="addCategoryButton">
+                <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                Add Category
+            </button>
+        </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show"
+                     role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close"
+                            data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="categories-summary">
+        <article class="category-stat">
+            <span class="category-stat-icon blue">
+                <i class="bi bi-tags-fill" aria-hidden="true"></i>
+            </span>
+            <div>
+                <span>Total Categories</span>
+                <strong>{{ total_categories }}</strong>
+            </div>
+        </article>
+
+        <article class="category-stat">
+            <span class="category-stat-icon green">
+                <i class="bi bi-check-circle-fill" aria-hidden="true"></i>
+            </span>
+            <div>
+                <span>Categories With Products</span>
+                <strong>{{ categories_with_products }}</strong>
+            </div>
+        </article>
+
+        <article class="category-stat">
+            <span class="category-stat-icon amber">
+                <i class="bi bi-box-seam" aria-hidden="true"></i>
+            </span>
+            <div>
+                <span>Products Assigned</span>
+                <strong>{{ products_assigned }}</strong>
+            </div>
+        </article>
+    </div>
+
+    <div class="categories-table-card">
+        <div class="table-responsive">
+            <table class="table categories-table mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Category Name</th>
+                        <th scope="col">Description</th>
+                        <th scope="col">Products</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="categoriesTableBody">
+                    {% for category in categories %}
+                    <tr class="category-row"
+                        data-search="{{ (category.categoryName ~ ' ' ~ (category.description or ''))|lower }}">
+                        <td>
+                            <strong>{{ category.categoryName }}</strong>
+                        </td>
+                        <td>
+                            {{ category.description or '—' }}
+                        </td>
+                        <td>
+                            <span class="category-count">{{ category.products|length }}</span>
+                        </td>
+                        <td>
+                            {% if category.products %}
+                                <span class="category-status in-use">In use</span>
+                            {% else %}
+                                <span class="category-status available">Available</span>
+                            {% endif %}
+                        </td>
+                        <td class="category-actions">
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-primary edit-category-btn"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#categoryModal"
+                                    data-id="{{ category.id }}"
+                                    data-name="{{ category.categoryName }}"
+                                    data-description="{{ category.description or '' }}"
+                                    aria-label="Edit {{ category.categoryName }}">
+                                <i class="bi bi-pencil-square" aria-hidden="true"></i>
+                                Edit
+                            </button>
+
+                            <form method="POST" action="{{ url_for('categories') }}"
+                                  class="d-inline"
+                                  onsubmit="return confirm('Delete this category? Categories with assigned products cannot be deleted.');">
+                                <input type="hidden" name="csrf_token"
+                                       value="{{ csrf_token() }}">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="category_id"
+                                       value="{{ category.id }}">
+                                <button type="submit"
+                                        class="btn btn-sm btn-outline-danger"
+                                        {% if category.products %}disabled title="Reassign or remove its products first"{% endif %}>
+                                    <i class="bi bi-trash" aria-hidden="true"></i>
+                                    Delete
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="empty-categories">
+                            <i class="bi bi-tags" aria-hidden="true"></i>
+                            <p>No categories have been created yet.</p>
+                            <span>Add a category to make it available in Product Entry.</span>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    <tr id="noCategoryResults" hidden>
+                        <td colspan="5" class="empty-categories">
+                            No categories match your search.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="categories-table-footer">
+            <span>{{ total_categories }} categories</span>
+            <a href="{{ url_for('inventory') }}">
+                <i class="bi bi-arrow-left" aria-hidden="true"></i>
+                Back to Inventory
+            </a>
+        </div>
+    </div>
+</section>
+
+<div class="modal fade" id="categoryModal" tabindex="-1"
+     aria-labelledby="categoryModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content inventory-modal">
+            <form method="POST" action="{{ url_for('categories') }}" id="categoryForm">
+                <div class="modal-header">
+                    <h2 class="modal-title fs-5" id="categoryModalTitle">Add Category</h2>
+                    <button type="button" class="btn-close"
+                            data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" id="categoryAction" value="add">
+                    <input type="hidden" name="category_id" id="categoryId" value="">
+
+                    <div class="mb-3">
+                        <label for="categoryName" class="form-label">Category Name</label>
+                        <input type="text" class="form-control" id="categoryName"
+                               name="category_name" maxlength="100" required>
+                    </div>
+
+                    <div>
+                        <label for="categoryDescription" class="form-label">
+                            Description <span class="text-muted">(optional)</span>
+                        </label>
+                        <textarea class="form-control" id="categoryDescription"
+                                  name="description" rows="3"
+                                  placeholder="Describe the products in this category"></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="saveCategoryButton">
+                        <i class="bi bi-check-lg me-1" aria-hidden="true"></i>
+                        Save Category
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const categoryModal = document.getElementById('categoryModal');
+    const categoryForm = document.getElementById('categoryForm');
+    const categoryAction = document.getElementById('categoryAction');
+    const categoryId = document.getElementById('categoryId');
+    const categoryName = document.getElementById('categoryName');
+    const categoryDescription = document.getElementById('categoryDescription');
+    const categoryModalTitle = document.getElementById('categoryModalTitle');
+    const saveCategoryButton = document.getElementById('saveCategoryButton');
+    const categorySearch = document.getElementById('categorySearch');
+    const categoryRows = Array.from(document.querySelectorAll('.category-row'));
+    const noCategoryResults = document.getElementById('noCategoryResults');
+
+    document.getElementById('addCategoryButton').addEventListener('click', function () {
+        categoryForm.reset();
+        categoryAction.value = 'add';
+        categoryId.value = '';
+        categoryModalTitle.textContent = 'Add Category';
+        saveCategoryButton.innerHTML =
+            '<i class="bi bi-check-lg me-1" aria-hidden="true"></i>Save Category';
+    });
+
+    document.querySelectorAll('.edit-category-btn').forEach(function (button) {
+        button.addEventListener('click', function () {
+            categoryAction.value = 'edit';
+            categoryId.value = button.dataset.id;
+            categoryName.value = button.dataset.name;
+            categoryDescription.value = button.dataset.description;
+            categoryModalTitle.textContent = 'Edit Category';
+            saveCategoryButton.innerHTML =
+                '<i class="bi bi-check-lg me-1" aria-hidden="true"></i>Save Changes';
+        });
+    });
+
+    categorySearch.addEventListener('input', function () {
+        const searchTerm = categorySearch.value.trim().toLowerCase();
+        let visibleCount = 0;
+
+        categoryRows.forEach(function (row) {
+            const matches = row.dataset.search.includes(searchTerm);
+            row.hidden = !matches;
+
+            if (matches) {
+                visibleCount += 1;
+            }
+        });
+
+        noCategoryResults.hidden = visibleCount > 0 || categoryRows.length === 0;
+    });
+</script>
+{% endblock %}
