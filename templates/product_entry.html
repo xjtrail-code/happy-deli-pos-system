@@ -56,18 +56,27 @@
                            value="{{ form_data.product_name if form_data is defined else '' }}">
                 </div>
 
+                
                 <div class="col-md-6">
-                    <label for="category" class="form-label">Category </label>
-                    <input type="text" class="form-control" id="category" name="category"
-                           placeholder="e.g. Beverages, Snacks, Dairy" maxlength="100" required
-                           list="categorySuggestions" autocomplete="off"
-                           value="{{ form_data.category if form_data is defined else '' }}">
-                    <datalist id="categorySuggestions">
-                        {% for category in categories|default([]) %}
-                            <option value="{{ category.categoryName }}"></option>
+                    <label for="category" class="form-label">Category</label>
+                    <select class="form-select" id="category" name="category_id" required>
+                        <option value="">Select a category</option>
+                        {% for category in categories %}
+                            <option value="{{ category.id }}"
+                                {% if form_data.get('category_id', '') == category.id|string %}selected{% endif %}>
+                                {{ category.categoryName }}
+                            </option>
                         {% endfor %}
-                    </datalist>
+                    </select>
+
+                    {% if not categories %}
+                        <div class="form-text text-danger">
+                            No categories exist yet.
+                            <a href="{{ url_for('categories') }}">Create a category first.</a>
+                        </div>
+                    {% endif %}
                 </div>
+
 
                 <div class="col-md-6">
                     <label for="cost_price" class="form-label">Cost Price ($)</label>
@@ -113,6 +122,38 @@
                     </div>
                     <div class="form-text">For an existing barcode, this quantity is added to current stock.</div>
                 </div>
+
+                <div class="col-md-6">
+                    <label for="supplier" class="form-label">Supplier</label>
+                    <select class="form-select" id="supplier" name="supplier_id">
+                        <option value="">Select a supplier</option>
+                        {% for supplier in suppliers %}
+                            <option value="{{ supplier.supplierID }}"
+                                {% if form_data.get('supplier_id', '') == supplier.supplierID|string %}selected{% endif %}>
+                                {{ supplier.supplierName }}
+                            </option>
+                        {% endfor %}
+                    </select>
+
+                    {% if not suppliers %}
+                        <div class="form-text text-danger">
+                            No suppliers exist yet.
+                            {% if g.user.has_permission('suppliers') %}<a href="{{ url_for('supplier_management') }}">Add a supplier first.</a>{% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="col-md-6">
+                    <label for="minimum_order" class="form-label">Minimum Stock Required</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-cart-check" aria-hidden="true"></i></span>
+                        <input type="number" class="form-control" id="minimum_order" name="minimum_order"
+                               min="0" max="1000000" step="1" placeholder="Enter reorder threshold"
+                               inputmode="numeric"
+                               value="{{ form_data.minimum_order if form_data is defined else '' }}">
+                    </div>
+                    <div class="form-text">Stock level at which this product should be reordered. Defaults to 5 if left blank.</div>
+                </div>
             </div>
 
             <div class="d-flex flex-column flex-sm-row justify-content-end gap-2 mt-4 pt-3 border-top">
@@ -136,6 +177,8 @@
     const nameInput = document.getElementById('product_name');
     const priceInput = document.getElementById('price');
     const categoryInput = document.getElementById('category');
+    const supplierInput = document.getElementById('supplier');
+    const minOrderInput = document.getElementById('minimum_order');
     const costInput = document.getElementById('cost_price');
     const marginInput = document.getElementById('margin_percent');
     const statusBox = document.getElementById('product_status');
@@ -169,7 +212,9 @@
             if (data.found) {
                 nameInput.value = data.name || '';
                 priceInput.value = Number(data.price || 0).toFixed(2);
-                categoryInput.value = data.category || '';
+                categoryInput.value = data.category_id ? String(data.category_id) : '';
+                supplierInput.value = data.supplier_id ? String(data.supplier_id) : '';
+                minOrderInput.value = data.reorder_threshold !== null && data.reorder_threshold !== undefined ? String(data.reorder_threshold) : '';
                 nameInput.readOnly = true;
                 setLookupStatus('Product found. Current stock: ' + data.quantity + ' units. Submitting will add the entered quantity to existing stock.', 'success');
                 document.getElementById('quantity').focus();
@@ -178,6 +223,8 @@
             } else {
                 nameInput.value = '';
                 categoryInput.value = '';
+                supplierInput.value = '';
+                minOrderInput.value = '';
                 nameInput.readOnly = false;
                 setLookupStatus('New barcode. Enter the product name, category, price, and quantity.', 'info');
                 nameInput.focus();
@@ -226,6 +273,14 @@
     document.getElementById('productEntryForm').addEventListener('submit', (event) => {
         const quantity = Number(document.getElementById('quantity').value);
         const price = Number(priceInput.value);
+        const minOrderRaw = minOrderInput.value.trim();
+        const minOrder = Number(minOrderRaw);
+        if (minOrderRaw !== '' && (!Number.isInteger(minOrder) || minOrder < 0 || minOrder > 1000000)) {
+            event.preventDefault();
+            event.stopPropagation();
+            setLookupStatus('Minimum order must be a whole number of 0 or more.', 'error');
+            return;
+        }
         if (!barcodeInput.value.trim() || !nameInput.value.trim() || !categoryInput.value.trim() ||
             priceInput.value.trim() === '' || !Number.isFinite(price) || price < 0 ||
             !Number.isInteger(quantity) || quantity < 1 || quantity > 1000000) {

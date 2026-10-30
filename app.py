@@ -279,28 +279,37 @@ def product_entry():
 
     if request.method == 'POST':
         form_data = request.form.to_dict()
-        try:
+        try:                        
             barcode = request.form.get('barcode', '').strip()
             product_name = request.form.get('product_name', '').strip()
-            category_name = request.form.get('category', '').strip()
+            category_id = int(request.form.get('category_id', ''))
             price = Decimal(request.form.get('price', '').strip()).quantize(Decimal('0.01'))
             quantity = int(request.form.get('quantity', ''))
 
-            if not barcode or not product_name or not category_name:
-                raise ValueError('Barcode, product name, and category are required.')
+            minimum_order_raw = request.form.get('minimum_order', '').strip()
+            minimum_order = int(minimum_order_raw) if minimum_order_raw else None
+            if minimum_order is not None and not 0 <= minimum_order <= 1_000_000:
+                raise ValueError('Minimum order must be between 0 and 1,000,000.')
+
+            supplier = None
+            supplier_id_raw = request.form.get('supplier_id', '').strip()
+            if supplier_id_raw:
+                supplier = db.session.get(Supplier, int(supplier_id_raw))
+                if supplier is None:
+                    raise ValueError('Please select a valid supplier.')
+
+            if not barcode or not product_name:
+                raise ValueError('Barcode and product name are required.')
+
+            category = db.session.get(Category, category_id)
+            if category is None:
+                raise ValueError('Please select a valid category.')
+
             if price < 0:
                 raise ValueError('Selling price cannot be negative.')
             if quantity < 1 or quantity > 1_000_000:
                 raise ValueError('Quantity must be between 1 and 1,000,000.')
 
-            # Find the entered category, or create it if this is a new category.
-            category = db.session.scalar(
-                db.select(Category).where(Category.categoryName.ilike(category_name))
-            )
-            if category is None:
-                category = Category(categoryName=category_name)
-                db.session.add(category)
-                db.session.flush()
 
             # If the barcode already exists, update its category/price and add stock.
             existing_product = db.session.scalar(
@@ -319,7 +328,10 @@ def product_entry():
                         reorderQuantity=20
                     )
                 existing_product.inventory.quantityOnHand += quantity
+                if minimum_order is not None:
+                    existing_product.inventory.reorderThreshold = minimum_order
                 existing_product.inventory.lastUpdated = datetime.now()
+                link_product = existing_product
 
                 message = (
                     f"{existing_product.productName} updated successfully. "
@@ -335,11 +347,31 @@ def product_entry():
                 )
                 product.inventory = Inventory(
                     quantityOnHand=quantity,
-                    reorderThreshold=5,
+                    reorderThreshold=minimum_order if minimum_order is not None else 5,
                     reorderQuantity=20
                 )
                 db.session.add(product)
+                link_product = product
                 message = f"{product_name} was added successfully."
+
+            if supplier is not None:
+                link = None
+                if link_product.id is not None:
+                    link = db.session.scalar(
+                        db.select(SupplierProduct).where(
+                            SupplierProduct.supplierId == supplier.supplierID,
+                            SupplierProduct.productId == link_product.id
+                        )
+                    )
+                if link is None:
+                    cost_raw = request.form.get('cost_price', '').strip()
+                    link_product.supplierProducts.append(SupplierProduct(
+                        supplier=supplier,
+                        unitCost=Decimal(cost_raw).quantize(Decimal('0.01')) if cost_raw else Decimal('0.00'),
+                        minimumOrderQuantity=1,
+                        leadTimeDays=0,
+                        lastPriceUpdate=datetime.now()
+                    ))
 
             db.session.commit()
             form_data = {}
@@ -363,6 +395,7 @@ def product_entry():
         message=message,
         message_type=message_type,
         categories=categories,
+        suppliers=db.session.scalars(db.select(Supplier).order_by(Supplier.supplierName)).all(),
         form_data=form_data
     )
 
@@ -413,6 +446,121 @@ def receive_inventory_stock():
     return redirect(url_for('inventory', stock_added=1))
 
 
+@app.route('/categories', methods=['GET', 'POST'])
+@login_required(permission='products')
+def categories():
+    if request.method == 'POST':
+        action = request.form.get('action', '')
+
+        try:
+            if action in ('add', 'edit'):
+                name = request.form.get('category_name', '').strip()
+                description = request.form.get('description', '').strip()
+
+                if not name or len(name) > 100:
+                    raise ValueError(
+                        'Category name is required and must be 100 characters or fewer.'
+                    )
+
+                category = None
+
+                if action == 'edit':
+                    category = db.get_or_404(
+                        Category,
+                        request.form.get('category_id', type=int)
+                    )
+
+                # Prevent duplicate names, including differences in capitalization.
+                duplicate_query = db.select(Category).where(
+                    db.func.lower(Category.categoryName) == name.lower()
+                )
+
+                if category is not None:
+                    duplicate_query = duplicate_query.where(
+                        Category.id != category.id
+                    )
+
+                if db.session.scalar(duplicate_query):
+                    raise ValueError(
+                        'A category with that name already exists.'
+                    )
+
+                if action == 'add':
+                    category = Category()
+
+                category.categoryName = name
+                category.description = description or None
+
+                db.session.add(category)
+                db.session.commit()
+
+                flash(
+                    'Category added successfully.'
+                    if action == 'add'
+                    else 'Category updated successfully.',
+                    'success'
+                )
+
+            elif action == 'delete':
+                category = db.get_or_404(
+                    Category,
+                    request.form.get('category_id', type=int)
+                )
+
+                if category.products:
+                    raise ValueError(
+                        'This category has assigned products. '
+                        'Reassign or remove those products before deleting it.'
+                    )
+
+                db.session.delete(category)
+                db.session.commit()
+                flash('Category deleted successfully.', 'success')
+
+            else:
+                raise ValueError('Invalid category action.')
+
+        except ValueError as exc:
+            db.session.rollback()
+            flash(str(exc), 'danger')
+
+        except IntegrityError:
+            db.session.rollback()
+            flash(
+                'That category name already exists. Please use a different name.',
+                'danger'
+            )
+
+        except Exception:
+            db.session.rollback()
+            app.logger.exception('Category management failed')
+            flash(
+                'Unable to save the category. Please try again.',
+                'danger'
+            )
+
+        return redirect(url_for('categories'))
+
+    category_list = db.session.scalars(
+        db.select(Category).order_by(Category.categoryName)
+    ).all()
+
+    total_categories = len(category_list)
+    categories_with_products = sum(
+        1 for category in category_list if category.products
+    )
+    products_assigned = sum(
+        len(category.products) for category in category_list
+    )
+
+    return render_template(
+        'categories.html',
+        categories=category_list,
+        total_categories=total_categories,
+        categories_with_products=categories_with_products,
+        products_assigned=products_assigned
+    )
+
 
 @app.route('/product-lookup/<barcode>')
 @login_required()
@@ -424,11 +572,18 @@ def product_lookup(barcode):
     )
 
     if product:
+        supplier_link = next(
+            (sp for sp in sorted(product.supplierProducts, key=lambda sp: not sp.isPrefered)),
+            None
+        )
         return {
             'found': True,
+            'supplier_id': supplier_link.supplierId if supplier_link else None,
+            'reorder_threshold': product.inventory.reorderThreshold if product.inventory else None,
             'name': product.productName,
             'price': float(product.sellingPrice),
             'category': product.category.categoryName if product.category else '',
+            'category_id': product.category.id if product.category else None,
             'quantity': product.inventory.quantityOnHand if product.inventory else 0
         }
 
