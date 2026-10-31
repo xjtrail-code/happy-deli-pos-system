@@ -9,7 +9,7 @@
             <i class="bi bi-arrow-left" aria-hidden="true"></i>
             <span>View Inventory</span>
         </a>
-        {% endif %}<a class="btn-link-icon" href="{{ url_for('admin_dashboard' if g.user.role == 'admin' else 'workspace') }}">
+        {% endif %}<a class="btn-link-icon" href="{{ url_for('admin_dashboard' if g.user.role == 'admin' else 'pos') }}">
             <i class="bi bi-house-fill" aria-hidden="true"></i>
             <span>Back to Home</span>
         </a>

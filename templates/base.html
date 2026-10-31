@@ -93,6 +93,7 @@
 
 
             <!-- DASHBOARD -->
+            {% if g.user.role == 'admin' %}
             <a
                 href="{{ url_for('admin_dashboard') }}"
                 class="sidebar-link
@@ -106,6 +107,7 @@
                 <span>Admin Dashboard</span>
 
             </a>
+            {% endif %}
 
 
             {% for permission, endpoint, label, icon in [

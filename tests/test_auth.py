@@ -65,10 +65,14 @@ class AuthenticationTests(unittest.TestCase):
         self.assertEqual(self.client.get('/pos').location, '/')
 
     def test_cashier_cannot_access_admin_routes(self):
-        self.assertEqual(self.login('cashier').location, '/workspace')
+        self.assertEqual(self.login('cashier').location, '/pos')
+        self.assertEqual(self.client.get('/').location, '/pos')
+        self.assertEqual(self.client.get('/workspace').location, '/pos')
         response = self.client.get('/pos')
         self.assertEqual(response.status_code, 200)
         self.assertNotIn(b'Back to Dashboard', response.data)
+        self.assertNotIn(b'Workspace', response.data)
+        self.assertNotIn(b'Admin Dashboard', response.data)
         for route in ('/admin-dashboard', '/product-entry'):
             self.assertEqual(self.client.get(route).status_code, 403)
         with self.client.session_transaction() as session:
@@ -80,6 +84,24 @@ class AuthenticationTests(unittest.TestCase):
         user = db.session.scalar(db.select(User).where(User.username == 'cashier'))
         db.session.delete(user)
         db.session.commit()
+        self.assertEqual(self.client.get('/pos').location, '/')
+
+    def test_server_restart_requires_fresh_login(self):
+        self.login('cashier')
+        self.assertEqual(self.client.get('/pos').status_code, 200)
+        previous_token = app.config['LOGIN_STARTUP_TOKEN']
+        self.addCleanup(app.config.update, LOGIN_STARTUP_TOKEN=previous_token)
+        app.config['LOGIN_STARTUP_TOKEN'] = 'another-server-run'
+        self.assertEqual(self.client.get('/pos').location, '/')
+        with self.client.session_transaction() as session:
+            self.assertNotIn('user_id', session)
+        self.assertEqual(self.login('cashier').location, '/pos')
+        self.assertEqual(self.client.get('/pos').status_code, 200)
+
+    def test_sessions_from_before_startup_check_require_login(self):
+        user = db.session.scalar(db.select(User).where(User.username == 'cashier'))
+        with self.client.session_transaction() as session:
+            session['user_id'] = user.id
         self.assertEqual(self.client.get('/pos').location, '/')
 
     def test_create_user_command(self):

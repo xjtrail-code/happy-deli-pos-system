@@ -72,12 +72,12 @@ class User(db.Model):
     def has_permission(self, permission):
         if not self.isActive or permission not in PERMISSIONS:
             return False
-        if self.role == 'admin':
+        if self.role == 'admin' or permission == 'pos':
             return True
         for override in self.permissions:
             if override.permission == permission:
                 return override.allowed
-        return permission == 'pos'
+        return False
 
     def set_password(self, password):
         self.passwordHash = generate_password_hash(password)

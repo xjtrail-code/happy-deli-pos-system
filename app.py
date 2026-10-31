@@ -1,6 +1,11 @@
 ﻿import os
 from dotenv import load_dotenv
 import secrets
+import hashlib
+import smtplib
+import ssl
+from email.message import EmailMessage
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from pathlib import Path
 
 from datetime import datetime
@@ -29,6 +34,16 @@ app.config.update(
     SESSION_COOKIE_SAMESITE='Lax',
     SESSION_COOKIE_SECURE=os.environ.get('SESSION_COOKIE_SECURE') == '1',
     PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
+    # A fresh value on every server start expires logins from previous runs.
+    LOGIN_STARTUP_TOKEN=secrets.token_hex(32),
+    SMTP_HOST=os.environ.get('SMTP_HOST', ''),
+    SMTP_PORT=int(os.environ.get('SMTP_PORT', '587')),
+    SMTP_USERNAME=os.environ.get('SMTP_USERNAME', ''),
+    SMTP_PASSWORD=os.environ.get('SMTP_PASSWORD', ''),
+    SMTP_FROM=os.environ.get('SMTP_FROM', ''),
+    SMTP_SSL=os.environ.get('SMTP_SSL') == '1',
+    APP_BASE_URL=os.environ.get('APP_BASE_URL', '').rstrip('/'),
+    PASSWORD_RESET_MAX_AGE=1800,
 )
 if not app.config['SECRET_KEY']:
     os.makedirs(app.instance_path, exist_ok=True)
@@ -128,6 +143,8 @@ app.jinja_env.globals['csrf_token'] = csrf_token
 
 @app.before_request
 def load_user_and_check_csrf():
+    if 'user_id' in session and session.get('login_startup_token') != app.config['LOGIN_STARTUP_TOKEN']:
+        session.clear()
     g.user = db.session.get(User, session['user_id']) if 'user_id' in session else None
     if g.user and not g.user.isActive:
         session.clear()
@@ -142,7 +159,7 @@ def load_user_and_check_csrf():
 @app.route('/', methods=['GET', 'POST'])
 def home():
     if g.user:
-        return redirect(url_for('admin_dashboard' if g.user.role == 'admin' else 'workspace'))
+        return redirect(url_for('admin_dashboard' if g.user.role == 'admin' else 'pos'))
     error = None
     if request.method == 'POST':
         username = request.form.get('username', '').strip().lower()
@@ -150,8 +167,9 @@ def home():
         if user and user.isActive and user.check_password(request.form.get('password', '')):
             session.clear()
             session['user_id'] = user.id
+            session['login_startup_token'] = app.config['LOGIN_STARTUP_TOKEN']
             session.permanent = True
-            return redirect(url_for('admin_dashboard' if user.role == 'admin' else 'workspace'))
+            return redirect(url_for('admin_dashboard' if user.role == 'admin' else 'pos'))
         error = 'Invalid username or password.'
     return render_template('login.html', error=error), 401 if error else 200
 
@@ -262,9 +280,97 @@ def pos():
     return render_template('pos.html')
 
 
-@app.route('/forgot-password')
+def password_reset_serializer():
+    return URLSafeTimedSerializer(app.config['SECRET_KEY'], salt='password-reset')
+
+
+@app.after_request
+def protect_password_reset_pages(response):
+    if request.endpoint in ('forgot_password', 'reset_password'):
+        response.headers['Cache-Control'] = 'no-store'
+        response.headers['Referrer-Policy'] = 'no-referrer'
+    return response
+
+
+def password_fingerprint(user):
+    return hashlib.sha256(user.passwordHash.encode()).hexdigest()
+
+
+def send_password_reset(user):
+    token = password_reset_serializer().dumps({
+        'user_id': user.id, 'password': password_fingerprint(user), 'email': user.email})
+    link = app.config['APP_BASE_URL'] + url_for('reset_password', token=token)
+    message = EmailMessage()
+    message['Subject'] = 'Reset your Happy Deli password'
+    message['From'] = app.config['SMTP_FROM']
+    message['To'] = user.email
+    message.set_content('A password reset was requested for your Happy Deli account.\n\n'
+                        f'Choose a new password here:\n{link}\n\n'
+                        'This link expires in 30 minutes and can only be used once. '
+                        'If you did not request this, you can ignore this email.')
+    smtp_class = smtplib.SMTP_SSL if app.config['SMTP_SSL'] else smtplib.SMTP
+    options = {'timeout': 15}
+    if app.config['SMTP_SSL']:
+        options['context'] = ssl.create_default_context()
+    with smtp_class(app.config['SMTP_HOST'], app.config['SMTP_PORT'], **options) as smtp:
+        if not app.config['SMTP_SSL']:
+            smtp.starttls(context=ssl.create_default_context())
+        if app.config['SMTP_USERNAME']:
+            smtp.login(app.config['SMTP_USERNAME'], app.config['SMTP_PASSWORD'])
+        smtp.send_message(message)
+
+
+@app.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
+    if request.method == 'POST':
+        if not all(app.config[key] for key in ('SMTP_HOST', 'SMTP_FROM', 'APP_BASE_URL')):
+            return render_template('forgot_password.html', error='Password reset email is not configured. Contact an administrator.'), 503
+        email = request.form.get('email', '').strip().lower()
+        user = db.session.scalar(db.select(User).where(db.func.lower(User.email) == email, User.isActive.is_(True)))
+        if user:
+            try:
+                send_password_reset(user)
+            except (smtplib.SMTPException, OSError):
+                # Never log the reset token, message contents, or SMTP credentials.
+                app.logger.error('Password reset email delivery failed.')
+        flash('If an active account matches that email, a password reset link will be sent. Check your inbox and spam folder.', 'success')
+        return redirect(url_for('forgot_password'))
     return render_template('forgot_password.html')
+
+
+@app.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    user = None
+    try:
+        data = password_reset_serializer().loads(token, max_age=app.config['PASSWORD_RESET_MAX_AGE'])
+        user = db.session.get(User, data['user_id'])
+        if not user or not user.isActive or data['email'] != user.email or not secrets.compare_digest(data['password'], password_fingerprint(user)):
+            user = None
+    except (BadSignature, SignatureExpired, KeyError, TypeError):
+        pass
+    if user is None:
+        return render_template('reset_password.html', invalid=True), 400
+    error = None
+    if request.method == 'POST':
+        password = request.form.get('password', '')
+        if len(password) < 12:
+            error = 'Passwords must be at least 12 characters.'
+        elif password != request.form.get('confirm_password', ''):
+            error = 'Passwords do not match.'
+        else:
+            # A conditional update prevents two simultaneous uses of the same link.
+            result = db.session.execute(db.update(User).where(
+                User.id == user.id, User.passwordHash == user.passwordHash,
+                User.isActive.is_(True), User.email == data['email']
+            ).values(passwordHash=generate_password_hash(password)))
+            if result.rowcount != 1:
+                db.session.rollback()
+                return render_template('reset_password.html', invalid=True), 400
+            db.session.commit()
+            session.clear()
+            flash('Password updated. Sign in with your new password.', 'success')
+            return redirect(url_for('home'))
+    return render_template('reset_password.html', error=error), 400 if error else 200
 
 
 @app.route('/product-entry', methods=['GET', 'POST'])
@@ -953,7 +1059,7 @@ def reports():
 @app.route('/workspace')
 @login_required()
 def workspace():
-    return render_template('workspace.html', permissions=PERMISSIONS)
+    return redirect(url_for('admin_dashboard' if g.user.role == 'admin' else 'pos'))
 
 
 @app.cli.command('init-db')
@@ -979,7 +1085,7 @@ def employee_management():
             last_name = request.form.get('last_name', '').strip()
             role = request.form.get('role', '')
             active = request.form.get('is_active') == 'on'
-            selected = set(request.form.getlist('permissions'))
+            selected = set(request.form.getlist('permissions')) if role != 'admin' else set()
             password = request.form.get('password', '')
             if not username or len(username) > 50 or any(c.isspace() for c in username):
                 raise ValueError('Username must contain 1–50 characters with no spaces.')
@@ -1005,12 +1111,18 @@ def employee_management():
             employee.role, employee.isActive = role, active
             if password:
                 employee.set_password(password)
-            overrides = {entry.permission: entry for entry in employee.permissions}
-            for permission in PERMISSIONS:
-                if permission in overrides:
-                    overrides[permission].allowed = permission in selected
-                else:
-                    employee.permissions.append(UserPermission(permission=permission, allowed=permission in selected))
+            if role == 'admin':
+                employee.permissions.clear()
+            else:
+                employee.permissions[:] = [entry for entry in employee.permissions if entry.permission != 'pos']
+                overrides = {entry.permission: entry for entry in employee.permissions}
+                for permission in PERMISSIONS:
+                    if permission == 'pos':
+                        continue
+                    if permission in overrides:
+                        overrides[permission].allowed = permission in selected
+                    else:
+                        employee.permissions.append(UserPermission(permission=permission, allowed=permission in selected))
             db.session.add(employee)
             db.session.commit()
             flash('Employee created.' if action == 'create' else 'Employee updated.', 'success')
@@ -1024,6 +1136,30 @@ def employee_management():
     employees = db.session.scalars(db.select(User).order_by(User.username)).all()
     return render_template('employee_management.html', employees=employees,
                            permissions=PERMISSIONS, error=error), 400 if error else 200
+
+
+@app.post('/employees/<int:employee_id>/delete')
+@login_required('admin')
+def delete_employee(employee_id):
+    employee = db.get_or_404(User, employee_id)
+    if employee.id == g.user.id:
+        flash('You cannot delete your own account.', 'danger')
+        return redirect(url_for('employee_management'))
+    has_history = any(db.session.scalar(db.select(db.exists().where(column == employee.id)))
+                      for column in (Transaction.userId, InventoryAdjustment.userId,
+                                     PurchaseReceipt.user_id))
+    if has_history:
+        flash('This user has sales, inventory adjustments, or supplier receipts. '
+              'Deactivate the account instead to preserve those records.', 'danger')
+        return redirect(url_for('employee_management'))
+    try:
+        db.session.delete(employee)
+        db.session.commit()
+        flash('User deleted.', 'success')
+    except IntegrityError:
+        db.session.rollback()
+        flash('This user has linked records and cannot be deleted. Deactivate the account instead.', 'danger')
+    return redirect(url_for('employee_management'))
 
 
 #settings

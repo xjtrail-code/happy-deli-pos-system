@@ -54,10 +54,37 @@ and further use of an existing session. Accounts are retained for sales history.
 You cannot deactivate or demote your own administrator account. Leave both password
 fields blank when editing to keep the existing password.
 
-Employees land on their workspace after login and see only permitted menu links.
+Employees land on POS / Checkout after login and see only permitted menu links. Administrators automatically have full access without individual permission selections.
 Permissions are also checked on the server for direct URLs and form submissions.
 Logout uses POST, sessions expire after eight hours, and forms require CSRF tokens.
-Password recovery and login rate limiting are not implemented yet.
+Restarting the app invalidates previous logins and requires users to sign in again.
+The startup login token is per process; run a single server worker. A multi-worker
+deployment needs a shared startup token to avoid logging users out between workers.
+Password recovery sends a single-use reset link that expires after 30 minutes.
+Login rate limiting is not implemented yet.
+
+### Password reset email
+
+Add your mail provider's settings to the local `.env` file (never commit credentials):
+
+```dotenv
+SMTP_HOST=smtp.your-provider.com
+SMTP_PORT=587
+SMTP_SSL=0
+SMTP_USERNAME=your-smtp-username
+SMTP_PASSWORD=your-smtp-password
+SMTP_FROM=your-verified-sender@example.com
+APP_BASE_URL=https://your-pos-address.example.com
+```
+
+Port 587 uses STARTTLS. For implicit TLS, use your provider's port (typically 465)
+and `SMTP_SSL=1`. Both modes verify the mail server's certificate.
+Use an app password or SMTP credential supplied by your email provider.
+`APP_BASE_URL` must be the address recipients can open in their browser; local-only
+addresses work only on devices that can reach the app. Restart after configuring.
+Users must have a real email address saved in Employee Management and an active
+account. Delivery failures appear in the server log without exposing reset links
+or credentials. Missing configuration displays an administrator-contact message.
 
 Use a stable random `SECRET_KEY` shared by all workers and set
 `SESSION_COOKIE_SECURE=1` for HTTPS deployment. If no key is configured, local
