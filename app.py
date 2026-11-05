@@ -903,12 +903,38 @@ def reports():
     from collections import defaultdict
     from decimal import Decimal
 
+    def parse_date_arg(name):
+        raw = request.args.get(name, '').strip()
+        try:
+            return date.fromisoformat(raw) if raw else None
+        except ValueError:
+            return None
+
+    start_date = parse_date_arg('start')
+    end_date = parse_date_arg('end')
+    if start_date and end_date and start_date > end_date:
+        start_date, end_date = end_date, start_date
+
     # Only completed transactions belong in sales and profitability reports.
+    query = db.select(Transaction).where(Transaction.status == 'completed')
+    if start_date:
+        query = query.where(Transaction.transactionDate >=
+                            datetime.combine(start_date, datetime.min.time()))
+    if end_date:  # inclusive of the whole end day
+        query = query.where(Transaction.transactionDate <
+                            datetime.combine(end_date + timedelta(days=1), datetime.min.time()))
     transactions = db.session.scalars(
-        db.select(Transaction)
-        .where(Transaction.status == 'completed')
-        .order_by(Transaction.transactionDate.desc())
+        query.order_by(Transaction.transactionDate.desc())
     ).all()
+
+    if start_date and end_date:
+        period_label = f"{start_date:%b %d, %Y} – {end_date:%b %d, %Y}"
+    elif start_date:
+        period_label = f"From {start_date:%b %d, %Y}"
+    elif end_date:
+        period_label = f"Up to {end_date:%b %d, %Y}"
+    else:
+        period_label = None
 
     total_revenue = sum((t.totalAmount or Decimal('0.00') for t in transactions), Decimal('0.00'))
     total_transactions = len(transactions)
@@ -1052,7 +1078,10 @@ def reports():
         category_reports=category_reports,
         top_products=top_products,
         largest_product_sales=largest_product_sales,
-        chart_data=chart_data
+        chart_data=chart_data,
+        period_label=period_label,
+        start_input=start_date.strftime('%m/%d/%Y') if start_date else '',
+        end_input=end_date.strftime('%m/%d/%Y') if end_date else ''
     )
 
    # EMPLOYEE MANAGEMENT

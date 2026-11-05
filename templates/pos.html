@@ -1,7 +1,7 @@
 
 {% extends "base.html" %}
 
-{% block title %}POS Checkout | Happy Deli Junco{% endblock %}
+{% block title %}Checkout | Happy Deli Junco{% endblock %}
 
 {% block content %}
 
@@ -14,11 +14,8 @@
         <div>
             <h2 class="fw-bold mb-1">
                 <i class="bi bi-calculator me-2"></i>
-                POS Checkout
+                Checkout
             </h2>
-            <p class="text-muted mb-0">
-                Process customer purchases quickly and accurately.
-            </p>
         </div>
 
         {% if g.user.role == 'admin' %}
@@ -50,7 +47,7 @@
                 <div class="card-body p-4">
                     <label for="productSearch"
                            class="form-label fw-semibold">
-                        Barcode or Product Name
+                        Barcode
                     </label>
 
                     <div class="row g-2">
@@ -58,7 +55,7 @@
                             <input type="text"
                                    id="productSearch"
                                    class="form-control pos-input"
-                                   placeholder="Scan barcode or enter product name"
+                                   placeholder="Scan barcode"
                                    autocomplete="off"
                                    autofocus>
                         </div>
@@ -72,10 +69,6 @@
                             </button>
                         </div>
                     </div>
-
-                    <small class="text-muted d-block mt-2">
-                        Scan a product or press Enter to add it to the transaction.
-                    </small>
                 </div>
             </div>
 
@@ -115,7 +108,7 @@
                             No products added yet
                         </h6>
                         <small>
-                            Scan or search for a product to begin checkout.
+                            Scan a product to begin checkout.
                         </small>
                     </div>
                 </div>
@@ -236,10 +229,6 @@
             </div>
 
         </div>
-    </div>
-
-    <div class="mt-4">
-        {% include '_logout.html' %}
     </div>
 
 </div>
