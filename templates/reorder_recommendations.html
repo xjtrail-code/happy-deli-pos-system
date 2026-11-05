@@ -2,8 +2,9 @@
 {% block title %}Reorder Recommendations | Happy Deli Junco{% endblock %}
 {% block content %}
 <div class="container-fluid py-4">
-  <h1>Reorder Recommendations</h1>
-  <p class="text-muted">Generate suggestions for active products at or below their reorder threshold. Preferred suppliers are selected first, then the lowest unit cost. Quantities respect the configured reorder amount and supplier minimum.</p>
+  <h2 class="fw-bold mb-1" style="color:#123a60;">
+    Reorder Recommendations
+</h2>
   {% for category, message in get_flashed_messages(with_categories=true) %}<div class="alert alert-{{ category }}" role="status">{{ message }}</div>{% endfor %}
   <form method="post" class="mb-4"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-primary" name="action" value="generate">Generate recommendations</button></form>
   <p class="small text-muted">These actions record status only. Contact the supplier to place the order, receive delivered stock through Inventory, then mark the recommendation complete. Active recommendations prevent duplicate suggestions.</p>

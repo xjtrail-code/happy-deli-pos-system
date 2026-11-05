@@ -4,232 +4,299 @@
 {% block title %}Admin Dashboard | Happy Deli Junco{% endblock %}
 
 {% block content %}
+<div class="container-fluid py-3 reports-page">
 
-<div class="container-fluid py-4">
-
-    <!-- HEADER -->
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+    <!-- PAGE HEADER -->
+    <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-4">
         <div>
-            <h2 class="fw-bold mb-1" style="color:#123a60;">
+            <h2 class="reports-heading fw-bold mb-1">
                 Admin Dashboard
             </h2>
             <p class="text-muted mb-0">
-                Welcome, {{ g.user.username }}.
-                Here's your store overview.
+                Welcome, {{ g.user.username }}. Here's your store overview.
             </p>
         </div>
-        <span class="badge px-3 py-2"
-              style="background:#123a60;">
-            <i class="bi bi-shop me-1"></i>
-            Store Overview
-        </span>
+        
+<form method="get" action="{{ url_for('admin_dashboard') }}"
+      class="d-flex flex-wrap align-items-center gap-2">
+
+    <i class="bi bi-calendar3"></i>
+
+    <select name="period" id="dashboardPeriod"
+            class="form-select w-auto"
+            onchange="toggleDateRange(); if(this.value !== 'custom') this.form.submit();">
+
+        <option value="today" {% if period == 'today' %}selected{% endif %}>Today</option>
+        <option value="7" {% if period == '7' %}selected{% endif %}>Last 7 Days</option>
+        <option value="30" {% if period == '30' %}selected{% endif %}>Last 30 Days</option>
+        <option value="month" {% if period == 'month' %}selected{% endif %}>This Month</option>
+        <option value="custom" {% if period == 'custom' %}selected{% endif %}>Custom Range</option>
+    </select>
+
+    <div id="customDateRange"
+         class="d-flex flex-wrap gap-2"
+         {% if period != 'custom' %}hidden{% endif %}>
+
+        <input type="date" name="start_date"
+               class="form-control w-auto"
+               value="{{ start_date }}">
+
+        <input type="date" name="end_date"
+               class="form-control w-auto"
+               value="{{ end_date }}">
+
+        <button type="submit" class="btn btn-primary">
+            Apply
+        </button>
+    </div>
+</form>
+
     </div>
 
-    <!-- OVERVIEW CARDS -->
-    <div class="row g-3 mb-4">
+    <!-- KPI CARDS -->
+    <div class="row g-3 mb-3">
 
-        <div class="col-12 col-md-4">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h6 class="text-muted">Today's Sales</h6>
-                        <i class="bi bi-currency-dollar fs-3 text-success"></i>
+        <div class="col-6 col-xl-4">
+            <section class="report-card metric-card metric-sales">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="metric-icon">
+                            <i class="bi bi-wallet2"></i>
+                        </span>
+                        <span class="metric-label">Today's Sales</span>
                     </div>
-                    <h2 class="fw-bold" style="color:#123a60;">
+                    <div class="metric-value">
                         ${{ "%.2f"|format(todays_sales|default(0, true)) }}
-                    </h2>
+                    </div>
+                    <div class="metric-note">Completed sales today</div>
                 </div>
-            </div>
+            </section>
         </div>
 
-        <div class="col-12 col-md-4">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h6 class="text-muted">Today's Transactions</h6>
-                        <i class="bi bi-receipt fs-3 text-primary"></i>
+        <div class="col-6 col-xl-4">
+            <section class="report-card metric-card metric-orders">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="metric-icon">
+                            <i class="bi bi-receipt-cutoff"></i>
+                        </span>
+                        <span class="metric-label">Today's Transactions</span>
                     </div>
-                    <h2 class="fw-bold" style="color:#123a60;">
+                    <div class="metric-value">
                         {{ todays_transactions|default(0, true) }}
-                    </h2>
+                    </div>
+                    <div class="metric-note">Completed transactions today</div>
                 </div>
-            </div>
+            </section>
         </div>
 
-        <div class="col-12 col-md-4">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body p-4">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <h6 class="text-muted">Low Stock Alerts</h6>
-                        <i class="bi bi-exclamation-triangle-fill fs-3 text-warning"></i>
+        <div class="col-12 col-xl-4">
+            <section class="report-card metric-card metric-margin">
+                <div class="card-body">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="metric-icon">
+                            <i class="bi bi-exclamation-triangle"></i>
+                        </span>
+                        <span class="metric-label">Low Stock Alerts</span>
                     </div>
-                    <h2 class="fw-bold" style="color:#123a60;">
+                    <div class="metric-value">
                         {{ low_stock_alerts|default(0, true) }}
-                    </h2>
-                    <a href="{{ url_for('inventory') }}"
-                       class="small text-decoration-none">
-                        View Inventory →
-                    </a>
+                    </div>
+                    <div class="metric-note">
+                        <a href="{{ url_for('inventory') }}">
+                            View Inventory
+                        </a>
+                    </div>
                 </div>
-            </div>
+            </section>
         </div>
 
     </div>
 
     <!-- CHARTS -->
-    <div class="row g-3 mb-4">
+    <div class="row g-3 mb-3">
 
-        <!-- SALES TREND -->
         <div class="col-12 col-xl-7">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3" style="color:#123a60;">
-                        <i class="bi bi-bar-chart-fill me-2"></i>
-                        Sales Trend — Last 7 Days
-                    </h5>
-                    <div style="height:300px;">
+            <section class="report-card h-100">
+                <div class="card-body">
+                    <div class="report-card-header">
+                        <h3 class="report-section-title">
+                            Sales Trend 
+                        </h3>
+                        <span class="small text-muted">Daily revenue</span>
+                    </div>
+                    <div class="chart-wrap trend-chart" style="height:320px;">
                         <canvas id="dashboardSalesChart"></canvas>
                     </div>
                 </div>
-            </div>
+            </section>
         </div>
 
-        <!-- PAYMENT BREAKDOWN -->
         <div class="col-12 col-xl-5">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body p-4">
-                    <h5 class="fw-bold mb-3" style="color:#123a60;">
-                        <i class="bi bi-pie-chart-fill me-2"></i>
-                        Payment Breakdown
-                    </h5>
-                    <div style="height:300px;">
+            <section class="report-card h-100">
+                <div class="card-body">
+                    <div class="report-card-header">
+                        <h3 class="report-section-title">
+                            Payment Breakdown
+                        </h3>
+                    </div>
+                    <div class="chart-wrap" style="height:320px;">
                         <canvas id="dashboardPaymentChart"></canvas>
                     </div>
+                    <p id="paymentEmpty" class="text-center text-muted small d-none">
+                        No completed payments in the last 7 days.
+                    </p>
                 </div>
-            </div>
+            </section>
         </div>
 
     </div>
 
     <!-- INVENTORY ALERTS -->
-    <div class="card shadow-sm border-0 mb-4">
-        <div class="card-body p-4">
-            <div class="d-flex justify-content-between align-items-center gap-2">
-                <div>
-                    <h5 class="fw-bold mb-1" style="color:#123a60;">
-                        <i class="bi bi-box-seam me-2"></i>
-                        Inventory Alerts
-                    </h5>
-                    <p class="text-muted mb-0">
-                        {{ low_stock_alerts|default(0, true) }}
-                        products currently have low stock.
-                    </p>
+    <div class="row g-3 mb-3">
+        <div class="col-12">
+            <section class="report-card">
+                <div class="card-body">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                        <div>
+                            <h3 class="report-section-title mb-2">
+                                <i class="bi bi-box-seam me-2"></i>
+                                Inventory Alerts
+                            </h3>
+                            <p class="text-muted mb-0">
+                                {{ low_stock_alerts|default(0, true) }}
+                                products currently need attention.
+                            </p>
+                        </div>
+                        <a href="{{ url_for('inventory') }}"
+                           class="btn btn-outline-primary">
+                            View Inventory
+                        </a>
+                    </div>
                 </div>
-                <a href="{{ url_for('inventory') }}"
-                   class="btn btn-outline-primary">
-                    View All
-                </a>
-            </div>
+            </section>
         </div>
-    </div>
-
-    <!-- QUICK ACTIONS -->
-    <h4 class="fw-bold mb-3" style="color:#123a60;">
-        Quick Actions
-    </h4>
-
-    <div class="row g-3 mb-4">
-
-        <div class="col-12 col-md-6 col-xl-4">
-            <a href="{{ url_for('pos') }}"
-               class="btn w-100 py-3 text-white"
-               style="background:#123a60;">
-                <i class="bi bi-calculator-fill me-2"></i>
-                POS / Checkout
-            </a>
-        </div>
-
-        <div class="col-12 col-md-6 col-xl-4">
-            <a href="{{ url_for('inventory') }}"
-               class="btn btn-primary w-100 py-3">
-                <i class="bi bi-box-seam me-2"></i>
-                Inventory
-            </a>
-        </div>
-
-        <div class="col-12 col-md-6 col-xl-4">
-            <a href="{{ url_for('reports') }}"
-               class="btn btn-primary w-100 py-3">
-                <i class="bi bi-file-earmark-bar-graph me-2"></i>
-                Reports & Analytics
-            </a>
-        </div>
-
-        <div class="col-12 col-md-6 col-xl-4">
-            <a href="{{ url_for('employee_management') }}"
-               class="btn btn-outline-primary w-100 py-3">
-                <i class="bi bi-people-fill me-2"></i>
-                Employee Management
-            </a>
-        </div>
-
-        <div class="col-12 col-md-6 col-xl-4">
-            <a href="{{ url_for('supplier_management') }}"
-               class="btn btn-outline-primary w-100 py-3">
-                <i class="bi bi-truck me-2"></i>
-                Supplier Management
-            </a>
-        </div>
-
     </div>
 
 </div>
 {% endblock %}
 
-
 {% block scripts %}
-<!-- CHART.JS -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{{ super() }}
+
+<script id="dashboard-data" type="application/json">
+{{ {
+    'labels': sales_labels|default([]),
+    'sales': sales_data|default([]),
+    'cash': cash_sales|default(0),
+    'card': card_sales|default(0)
+}|tojson }}
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.js"></script>
 
 <script>
-    // Data will be connected to Flask in the next step.
-    const salesLabels = [];
-    const salesValues = [];
+function toggleDateRange() {
+    const period = document.getElementById('dashboardPeriod').value;
+    document.getElementById('customDateRange').hidden = period !== 'custom';
+}
+document.addEventListener('DOMContentLoaded', function () {
 
-    new Chart(document.getElementById('dashboardSalesChart'), {
-        type: 'bar',
+    const data = JSON.parse(
+        document.getElementById('dashboard-data').textContent
+    );
+
+    const salesCanvas = document.getElementById('dashboardSalesChart');
+    const paymentCanvas = document.getElementById('dashboardPaymentChart');
+
+    if (typeof Chart === 'undefined') {
+        console.error('Chart.js failed to load.');
+        return;
+    }
+
+    // SEVEN-DAY SALES CHART
+    new Chart(salesCanvas, {
+        type: 'line',
         data: {
-            labels: salesLabels,
+            labels: data.labels,
             datasets: [{
-                label: 'Sales ($)',
-                data: salesValues,
-                backgroundColor: '#2586ed',
-                borderRadius: 6
+                label: 'Sales',
+                data: data.sales,
+                borderColor: '#1877f2',
+                backgroundColor: 'rgba(24,119,242,.10)',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                tension: 0.32,
+                fill: true
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: context =>
+                            'Sales: $' + Number(context.parsed.y).toFixed(2)
+                    }
+                }
+            },
             scales: {
-                y: { beginAtZero: true }
+                x: {
+                    grid: { display: false }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: value => '$' + value
+                    }
+                }
             }
         }
     });
 
-    new Chart(document.getElementById('dashboardPaymentChart'), {
+    // CASH VS CARD
+    const paymentValues = [
+        Number(data.cash),
+        Number(data.card)
+    ];
+
+    const hasPayments = paymentValues.some(value => value > 0);
+
+    if (!hasPayments) {
+        document.getElementById('paymentEmpty').classList.remove('d-none');
+    }
+
+    new Chart(paymentCanvas, {
         type: 'doughnut',
         data: {
             labels: ['Cash', 'Card'],
             datasets: [{
-                data: [],
-                backgroundColor: ['#123a60', '#58a6ff']
+                data: hasPayments ? paymentValues : [],
+                backgroundColor: ['#123a60', '#58a6ff'],
+                borderWidth: 0,
+                hoverOffset: 4
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+                legend: { position: 'bottom' },
+                tooltip: {
+                    callbacks: {
+                        label: context =>
+                            context.label + ': $' +
+                            Number(context.parsed).toFixed(2)
+                    }
+                }
+            }
         }
     });
-</script>
 
+});
+</script>
 {% endblock %}

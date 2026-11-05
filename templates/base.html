@@ -15,8 +15,17 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     {% block extra_css %}{% endblock %}
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
+<script>
+try {
+    const savedTheme = localStorage.getItem("happyDeliTheme") || "light";
+    document.documentElement.setAttribute("data-bs-theme", savedTheme);
+} catch (error) {
+    document.documentElement.setAttribute("data-bs-theme", "light");
+}
+</script>
+
 <body>
 
 <!-- TOP HEADER -->
@@ -57,9 +66,6 @@
                     <span id="current-time"></span>
                 </div>
             </div>
-
-            <div class="header-divider"></div>
-
             <div class="col-auto">
                 <div class="header-user dropdown">
                     <i class="bi bi-person-fill header-user-icon"></i>
@@ -187,6 +193,20 @@
 
 </script>
 
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    try {
+        const compact = localStorage.getItem("happyDeliCompactTables") === "true";
+        const reduceMotion = localStorage.getItem("happyDeliReduceMotion") === "true";
+
+        document.body.classList.toggle("settings-compact", compact);
+        document.body.classList.toggle("settings-reduce-motion", reduceMotion);
+    } catch (error) {
+        console.warn("Display preferences could not be loaded.");
+    }
+});
+</script>
 
 {% block scripts %}
 {% endblock %}

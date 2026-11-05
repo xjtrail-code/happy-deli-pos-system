@@ -11,7 +11,7 @@ from pathlib import Path
 from datetime import datetime
 from decimal import Decimal, InvalidOperation   
 
-from models import db, PERMISSIONS, UserPermission, PurchaseReceipt, PurchaseReceiptItem
+from models import db, PERMISSIONS, UserPermission, PurchaseReceipt, PurchaseReceiptItem, BusinessInfo
 from sqlalchemy.exc import IntegrityError
 from models import (User, Category, Product, Transaction, TransactionItem, 
                     Inventory, Supplier, SupplierProduct, InventoryAdjustment, 
@@ -187,77 +187,97 @@ def logout():
     return redirect(url_for('dashboard'))'''
 
 
+
 @app.route('/admin-dashboard')
 @login_required('admin')
 def admin_dashboard():
     from datetime import datetime, date, timedelta
 
     today = date.today()
-    start_of_day = datetime.combine(today, datetime.min.time())
-    end_of_day = start_of_day + timedelta(days=1)
+    period = request.args.get('period', '7')
 
-    # Get all completed transactions from the last 7 days
-    start_of_week = start_of_day - timedelta(days=6)
+    # Selected date range
+    if period == 'today':
+        start_date = today
+        end_date = today
+    elif period == '30':
+        start_date = today - timedelta(days=29)
+        end_date = today
+    elif period == 'month':
+        start_date = today.replace(day=1)
+        end_date = today
+    elif period == 'custom':
+        try:
+            start_date = date.fromisoformat(request.args['start_date'])
+            end_date = date.fromisoformat(request.args['end_date'])
+            if start_date > end_date or end_date > today:
+                raise ValueError
+        except (ValueError, KeyError):
+            period = '7'
+            start_date = today - timedelta(days=6)
+            end_date = today
+    else:
+        period = '7'
+        start_date = today - timedelta(days=6)
+        end_date = today
 
+    start_of_day = datetime.combine(start_date, datetime.min.time())
+    end_of_day = datetime.combine(
+        end_date + timedelta(days=1), datetime.min.time()
+    )
+
+    # Completed transactions for selected period
     recent_transactions = db.session.scalars(
         db.select(Transaction)
         .where(Transaction.status == 'completed')
-        .where(Transaction.transactionDate >= start_of_week)
+        .where(Transaction.transactionDate >= start_of_day)
         .where(Transaction.transactionDate < end_of_day)
         .order_by(Transaction.transactionDate.asc())
     ).all()
 
-    # Today's completed transactions
-    todays_transactions_list = [
-        t for t in recent_transactions
-        if start_of_day <= t.transactionDate < end_of_day
-    ]
+    # Sales and transactions for selected period
+    todays_transactions_list = recent_transactions
 
     todays_sales = round(
-        float(sum(t.totalAmount for t in todays_transactions_list)),
-        2
+        float(sum(t.totalAmount for t in todays_transactions_list)), 2
     )
 
     todays_transactions = len(todays_transactions_list)
 
-    # Seven-day sales chart
+    # Sales chart
     sales_labels = []
     sales_data = []
 
-    for days_ago in range(6, -1, -1):
-        current_day = today - timedelta(days=days_ago)
-
+    current_day = start_date
+    while current_day <= end_date:
         daily_total = sum(
             t.totalAmount for t in recent_transactions
             if t.transactionDate.date() == current_day
         )
 
-        sales_labels.append(current_day.strftime('%a'))
+        sales_labels.append(current_day.strftime('%m/%d'))
         sales_data.append(round(float(daily_total), 2))
+        current_day += timedelta(days=1)
 
-    # Cash vs Card breakdown for the last 7 days
+    # Cash vs Card breakdown
     cash_sales = round(
         float(sum(
             t.totalAmount for t in recent_transactions
             if t.paymentMethod == 'cash'
-        )),
-        2
+        )), 2
     )
 
     card_sales = round(
         float(sum(
             t.totalAmount for t in recent_transactions
             if t.paymentMethod in ('credit', 'debit')
-        )),
-        2
+        )), 2
     )
 
     # Inventory alerts
     low_stock_alerts = db.session.scalar(
         db.select(db.func.count(Inventory.id))
-        .where(
-            Inventory.quantityOnHand <= Inventory.reorderThreshold
-        )
+        .where(Inventory.quantityOnHand <= Inventory.reorderThreshold)
     ) or 0
 
     return render_template(
@@ -269,8 +289,12 @@ def admin_dashboard():
         sales_labels=sales_labels,
         sales_data=sales_data,
         cash_sales=cash_sales,
-        card_sales=card_sales
+        card_sales=card_sales,
+        period=period,
+        start_date=start_date.isoformat(),
+        end_date=end_date.isoformat()
     )
+
 
 
 
@@ -1191,11 +1215,59 @@ def delete_employee(employee_id):
     return redirect(url_for('employee_management'))
 
 
-#settings
+
+# Settings
 @app.route('/settings')
 @login_required('admin')
 def settings():
-    return render_template('settings.html')
+    business_info = db.session.get(BusinessInfo, 1)
+
+    return render_template(
+        'settings.html',
+        business_info=business_info
+    )
+
+
+@app.route('/settings/business-info', methods=['POST'])
+@login_required('admin')
+def update_business_info():
+    business_info = db.session.get(BusinessInfo, 1)
+
+    store_name = request.form.get('storeName', '').strip()
+    address = request.form.get('address', '').strip()
+    phone = request.form.get('phone', '').strip()
+    email = request.form.get('email', '').strip()
+
+    if not store_name or len(store_name) > 150:
+        flash('Enter a valid store name (maximum 150 characters).', 'danger')
+        return redirect(url_for('settings'))
+
+    if len(address) > 255 or len(phone) > 30 or len(email) > 100:
+        flash('One or more business information fields are too long.', 'danger')
+        return redirect(url_for('settings'))
+
+    if email and ('@' not in email or '.' not in email.rsplit('@', 1)[-1]):
+        flash('Enter a valid email address.', 'danger')
+        return redirect(url_for('settings'))
+
+    if business_info is None:
+        business_info = BusinessInfo(id=1)
+        db.session.add(business_info)
+
+    business_info.storeName = store_name
+    business_info.address = address
+    business_info.phone = phone
+    business_info.email = email
+
+    try:
+        db.session.commit()
+        flash('Business information updated successfully.', 'success')
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('Failed to update business information')
+        flash('Unable to save business information.', 'danger')
+
+    return redirect(url_for('settings'))
 
 
 
