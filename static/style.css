@@ -1863,3 +1863,317 @@ body.settings-reduce-motion *, body.settings-reduce-motion *::before, body.setti
         flex-direction: column;
     }
 }
+
+
+/* Display Preferences */
+
+/* Show more rows in tables */
+
+/* Compact Tables */
+body.settings-compact .table > :not(caption) > * > * {
+    padding-top: 3px !important;
+    padding-bottom: 3px !important;
+}
+
+/* Reduce animations and transitions */
+body.settings-reduce-motion *,
+body.settings-reduce-motion *::before,
+body.settings-reduce-motion *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+}
+
+
+/* Happy Deli Dark Mode */
+[data-bs-theme="dark"] body,
+[data-bs-theme="dark"] .main-content {
+    background-color: #111827 !important;
+    color: #e5e7eb;
+}
+
+[data-bs-theme="dark"] .settings-panel,
+[data-bs-theme="dark"] .report-card,
+[data-bs-theme="dark"] .inventory-stat,
+[data-bs-theme="dark"] .inventory-table-card,
+[data-bs-theme="dark"] .card {
+    background-color: #1f2937 !important;
+    border-color: #374151 !important;
+    color: #e5e7eb;
+}
+
+[data-bs-theme="dark"] .settings-panel-inner,
+[data-bs-theme="dark"] .settings-security-row,
+[data-bs-theme="dark"] .settings-preferences,
+[data-bs-theme="dark"] .settings-system-grid,
+[data-bs-theme="dark"] .settings-info-row,
+[data-bs-theme="dark"] .settings-preference-row {
+    background-color: #273449 !important;
+    color: #e5e7eb;
+}
+
+[data-bs-theme="dark"] .inventory-table,
+[data-bs-theme="dark"] .inventory-table thead th,
+[data-bs-theme="dark"] .inventory-table tbody td {
+    background-color: #1f2937 !important;
+    color: #e5e7eb !important;
+    border-color: #374151 !important;
+}
+
+[data-bs-theme="dark"] .settings-page h1,
+[data-bs-theme="dark"] .settings-page h2,
+[data-bs-theme="dark"] .reports-heading,
+[data-bs-theme="dark"] .report-section-title,
+[data-bs-theme="dark"] .metric-value {
+    color: #f9fafb !important;
+}
+
+[data-bs-theme="dark"] .text-muted {
+    color: #aebed1 !important;
+}
+
+
+/* ==========================================
+   HAPPY DELI JUNCO — DARK MODE
+   Light Mode remains unchanged
+   ========================================== */
+
+[data-bs-theme="dark"] {
+    --bs-body-bg: #0f172a;
+    --bs-body-color: #e2e8f0;
+    --bs-border-color: #334155;
+    --bs-secondary-color: #94a3b8;
+    --bs-tertiary-bg: #263449;
+}
+
+/* Main background */
+[data-bs-theme="dark"] body,
+[data-bs-theme="dark"] .main-content {
+    background-color: #0f172a !important;
+    color: #e2e8f0;
+}
+
+/* Main page containers */
+[data-bs-theme="dark"] .settings-page,
+[data-bs-theme="dark"] .reports-page,
+[data-bs-theme="dark"] .pos-page,
+[data-bs-theme="dark"] .categories-page,
+[data-bs-theme="dark"] .supplier-page {
+    color: #e2e8f0;
+}
+
+/* Cards and panels */
+[data-bs-theme="dark"] .settings-panel,
+[data-bs-theme="dark"] .report-card,
+[data-bs-theme="dark"] .metric-card,
+[data-bs-theme="dark"] .inventory-stat,
+[data-bs-theme="dark"] .inventory-table-card,
+[data-bs-theme="dark"] .supplier-card,
+[data-bs-theme="dark"] .supplier-table-card,
+[data-bs-theme="dark"] .pos-card,
+[data-bs-theme="dark"] .category-stat,
+[data-bs-theme="dark"] .categories-table-card,
+[data-bs-theme="dark"] .card {
+    background: #1e293b !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+/* Inner sections */
+[data-bs-theme="dark"] .settings-panel-inner,
+[data-bs-theme="dark"] .settings-security-row,
+[data-bs-theme="dark"] .settings-preferences,
+[data-bs-theme="dark"] .settings-system-grid,
+[data-bs-theme="dark"] .pos-card .card-header,
+[data-bs-theme="dark"] .pos-cash-section,
+[data-bs-theme="dark"] .reports-info-panel {
+    background: #263449 !important;
+    border-color: #334155 !important;
+    color: #e2e8f0 !important;
+}
+
+/* Headings and important labels */
+[data-bs-theme="dark"] .settings-title,
+[data-bs-theme="dark"] .settings-heading-copy h2,
+[data-bs-theme="dark"] .settings-info-row strong,
+[data-bs-theme="dark"] .settings-security-row strong,
+[data-bs-theme="dark"] .settings-preference-row strong,
+[data-bs-theme="dark"] .report-section-title,
+[data-bs-theme="dark"] .metric-value,
+[data-bs-theme="dark"] .categories-heading h1,
+[data-bs-theme="dark"] .category-stat strong,
+[data-bs-theme="dark"] .supplier-card .number,
+[data-bs-theme="dark"] .product-name,
+[data-bs-theme="dark"] .product-rank {
+    color: #f1f5f9 !important;
+}
+
+/* Secondary text */
+[data-bs-theme="dark"] .settings-subtitle,
+[data-bs-theme="dark"] .settings-heading-copy p,
+[data-bs-theme="dark"] .settings-security-2fa p,
+[data-bs-theme="dark"] .settings-preference-row small,
+[data-bs-theme="dark"] .settings-browser-note,
+[data-bs-theme="dark"] .categories-heading p,
+[data-bs-theme="dark"] .metric-label,
+[data-bs-theme="dark"] .metric-note,
+[data-bs-theme="dark"] .text-muted {
+    color: #a8b9cf !important;
+}
+
+/* Forms and dropdowns */
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select,
+[data-bs-theme="dark"] .input-group-text,
+[data-bs-theme="dark"] .pos-input,
+[data-bs-theme="dark"] .settings-preference-row .form-select,
+[data-bs-theme="dark"] .settings-preference-row .form-select:disabled {
+    background-color: #334155 !important;
+    color: #f1f5f9 !important;
+    border-color: #475569 !important;
+}
+
+[data-bs-theme="dark"] .form-control::placeholder {
+    color: #a8b9cf;
+}
+
+/* Tables */
+[data-bs-theme="dark"] .table,
+[data-bs-theme="dark"] .inventory-table,
+[data-bs-theme="dark"] .report-table,
+[data-bs-theme="dark"] .pos-table,
+[data-bs-theme="dark"] .supplier-table,
+[data-bs-theme="dark"] .categories-table {
+    --bs-table-bg: #1e293b;
+    --bs-table-color: #e2e8f0;
+    --bs-table-border-color: #334155;
+    --bs-table-hover-bg: #263449;
+    --bs-table-hover-color: #f1f5f9;
+    color: #e2e8f0 !important;
+}
+
+[data-bs-theme="dark"] .table thead th,
+[data-bs-theme="dark"] .inventory-table thead th,
+[data-bs-theme="dark"] .report-table thead th,
+[data-bs-theme="dark"] .pos-table th,
+[data-bs-theme="dark"] .supplier-table th,
+[data-bs-theme="dark"] .categories-table thead th {
+    background: #263449 !important;
+    color: #f1f5f9 !important;
+    border-color: #334155 !important;
+}
+
+[data-bs-theme="dark"] .pos-table td,
+[data-bs-theme="dark"] .categories-table tbody td,
+[data-bs-theme="dark"] .inventory-table tbody td {
+    color: #e2e8f0 !important;
+    border-color: #334155 !important;
+}
+
+/* Buttons and interactive elements */
+[data-bs-theme="dark"] .btn-outline-primary {
+    color: #93c5fd;
+    border-color: #60a5fa;
+}
+
+[data-bs-theme="dark"] .btn-outline-primary:hover {
+    background: #2563eb;
+    color: #fff;
+}
+
+[data-bs-theme="dark"] .payment-choice {
+    background: #334155;
+    color: #f1f5f9;
+    border-color: #475569;
+}
+
+[data-bs-theme="dark"] .payment-choice.active {
+    background: #1d4ed8;
+    color: #fff;
+    border-color: #60a5fa;
+}
+
+/* Report and category details */
+[data-bs-theme="dark"] .reports-page .product-row,
+[data-bs-theme="dark"] .reports-page .legend-row,
+[data-bs-theme="dark"] .categories-table-footer {
+    border-color: #334155;
+}
+
+[data-bs-theme="dark"] .reports-page .product-name,
+[data-bs-theme="dark"] .reports-page .product-rank,
+[data-bs-theme="dark"] .reports-page .product-total {
+    color: #f1f5f9;
+}
+
+[data-bs-theme="dark"] .categories-table tbody tr:hover {
+    background: #263449;
+}
+
+/* Keep important status badges readable */
+[data-bs-theme="dark"] .settings-pill-blue {
+    background: #1e3a5f;
+    color: #93c5fd;
+    border-color: #315c91;
+}
+
+[data-bs-theme="dark"] .settings-pill-green {
+    background: #134e3a;
+    color: #a7f3d0;
+}
+
+[data-bs-theme="dark"] .settings-pill-muted {
+    background: #334155;
+    color: #cbd5e1;
+}
+
+
+/* ==========================================
+   DARK MODE — PRODUCT ENTRY & PAGE HEADERS
+   ========================================== */
+
+/* Product Entry heading */
+[data-bs-theme="dark"] .product-entry-page h1,
+[data-bs-theme="dark"] .product-entry-page h2,
+[data-bs-theme="dark"] .main-content > h1,
+[data-bs-theme="dark"] .main-content h1 {
+    color: #f1f5f9 !important;
+}
+
+/* Product Entry white form/card */
+[data-bs-theme="dark"] .product-entry-page .card,
+[data-bs-theme="dark"] .product-entry-card,
+[data-bs-theme="dark"] .product-form-card {
+    background: #1e293b !important;
+    color: #e2e8f0 !important;
+    border-color: #334155 !important;
+}
+
+/* Form header */
+[data-bs-theme="dark"] .product-entry-page .card-header,
+[data-bs-theme="dark"] .product-entry-card .card-header,
+[data-bs-theme="dark"] .product-form-card .card-header {
+    background: #263449 !important;
+    color: #f1f5f9 !important;
+    border-color: #334155 !important;
+}
+
+/* Labels and helper text */
+[data-bs-theme="dark"] .product-entry-page label,
+[data-bs-theme="dark"] .product-entry-page .form-label {
+    color: #e2e8f0 !important;
+}
+
+[data-bs-theme="dark"] .product-entry-page .form-text,
+[data-bs-theme="dark"] .product-entry-page small {
+    color: #a8b9cf !important;
+}
+
+/* Shared page titles */
+[data-bs-theme="dark"] .inventory-page h1,
+[data-bs-theme="dark"] .reports-page h1,
+[data-bs-theme="dark"] .categories-page h1,
+[data-bs-theme="dark"] .supplier-page h1,
+[data-bs-theme="dark"] .pos-page h1 {
+    color: #f1f5f9 !important;
+}

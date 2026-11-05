@@ -296,3 +296,12 @@ class LowStockAlert(db.Model):
         CheckConstraint('"quantityAtAlert" >= 0', name='check_quantity_at_alert'),
         CheckConstraint('"threshold" >= 0', name='check_threshold'),
     )
+
+class BusinessInfo(db.Model):
+    __tablename__ = 'business_info'
+
+    id = db.Column(db.Integer, primary_key=True)
+    storeName = db.Column(db.String(150), nullable=False, default='Happy Deli Junco')
+    address = db.Column(db.String(255), nullable=True)
+    phone = db.Column(db.String(30), nullable=True)
+    email = db.Column(db.String(100), nullable=True)

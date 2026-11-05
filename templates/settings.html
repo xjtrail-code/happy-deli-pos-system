@@ -1,5 +1,7 @@
+
 {% extends "base.html" %}
 {% block title %}Settings | Happy Deli Junco{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-4 settings-page">
   <div class="settings-topbar">
@@ -17,7 +19,16 @@
 
   <div id="settingsAlert" class="alert alert-success d-none" role="status" aria-live="polite"></div>
 
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+    <div class="alert alert-{{ category }}" role="alert">
+      {{ message }}
+    </div>
+  {% endfor %}
+{% endwith %}
+
   <div class="row g-3 align-items-stretch">
+
     <!-- MY ACCOUNT -->
     <div class="col-12 col-xl-6">
       <section class="settings-panel h-100">
@@ -32,10 +43,26 @@
           </button>
         </div>
         <div class="settings-panel-inner">
-          <div class="settings-info-row"><strong>Username</strong><span>{{ g.user.username|default('Signed-in user', true) }}</span></div>
-          <div class="settings-info-row"><strong>Role</strong><span><span class="settings-pill settings-pill-blue">{{ g.user.role|default('Staff', true)|title }}</span></span></div>
-          <div class="settings-info-row"><strong>Account Status</strong><span class="settings-pill settings-pill-green">Signed in</span></div>
-          <div class="settings-info-row"><strong>Member Since</strong><span class="text-muted">Not available</span></div>
+          <div class="settings-info-row">
+            <strong>Username</strong>
+            <span>{{ g.user.username|default('Signed-in user', true) }}</span>
+          </div>
+          <div class="settings-info-row">
+            <strong>Role</strong>
+            <span>
+              <span class="settings-pill settings-pill-blue">
+                {{ g.user.role|default('Staff', true)|title }}
+              </span>
+            </span>
+          </div>
+          <div class="settings-info-row">
+            <strong>Account Status</strong>
+            <span class="settings-pill settings-pill-green">Signed in</span>
+          </div>
+          <div class="settings-info-row">
+            <strong>Member Since</strong>
+            <span class="text-muted">Not available</span>
+          </div>
         </div>
       </section>
     </div>
@@ -45,16 +72,28 @@
       <section class="settings-panel h-100">
         <div class="settings-panel-heading">
           <i class="bi bi-lock-fill settings-heading-icon"></i>
-          <div class="settings-heading-copy"><h2>Security</h2><p>Manage your password and account security.</p></div>
+          <div class="settings-heading-copy">
+            <h2>Security</h2>
+            <p>Manage your password and account security.</p>
+          </div>
         </div>
+
         <div class="settings-security-row">
-          <div><strong>Password</strong><span class="settings-password-mask">••••••••</span></div>
+          <div>
+            <strong>Password</strong>
+            <span class="settings-password-mask">••••••••</span>
+          </div>
           <button class="btn btn-outline-primary settings-outline-action" type="button" disabled title="Password changes are not connected yet">
             <i class="bi bi-key me-2"></i>Change Password
           </button>
         </div>
+
         <div class="settings-security-row settings-security-2fa">
-          <div><strong>Two-Factor Authentication</strong><p>Add an extra layer of security to your account.</p><span class="settings-pill settings-pill-muted">Not configured in this page</span></div>
+          <div>
+            <strong>Two-Factor Authentication</strong>
+            <p>Add an extra layer of security to your account.</p>
+            <span class="settings-pill settings-pill-muted">Not configured in this page</span>
+          </div>
           <button class="btn btn-outline-primary settings-outline-action" type="button" disabled title="Two-factor authentication is not connected yet">
             <i class="bi bi-shield-lock me-2"></i>Enable 2FA
           </button>
@@ -62,68 +101,224 @@
       </section>
     </div>
 
-    <!-- DISPLAY -->
+    <!-- DISPLAY PREFERENCES -->
     <div class="col-12 col-xl-6">
       <section class="settings-panel h-100">
         <div class="settings-panel-heading">
           <i class="bi bi-display settings-heading-icon"></i>
-          <div class="settings-heading-copy"><h2>Display Preferences</h2><p>Customize how the system looks and behaves.</p></div>
+          <div class="settings-heading-copy">
+            <h2>Display Preferences</h2>
+            <p>Customize how the system looks and behaves.</p>
+          </div>
         </div>
+
         <div class="settings-preferences">
+
           <div class="settings-preference-row">
-            <label for="settingsTheme"><strong>Theme</strong></label>
-            <select class="form-select" id="settingsTheme" disabled title="Additional themes are not implemented"><option>Light (Default)</option></select>
+            <label for="settingsTheme">
+              <strong>Theme</strong>
+            </label>
+            <select class="form-select" id="settingsTheme">
+              <option value="light">Light (Default)</option>
+              <option value="dark">Dark Mode</option>
+            </select>
           </div>
+
           <div class="settings-preference-row">
-            <label for="settingsCompact"><strong>Compact Tables</strong><small>Show more data in tables.</small></label>
-            <div class="form-check form-switch"><input class="form-check-input settings-switch" type="checkbox" role="switch" id="settingsCompact"></div>
+            <label for="settingsCompact">
+              <strong>Compact Tables</strong>
+              <small>Show more data in tables.</small>
+            </label>
+            <div class="form-check form-switch">
+              <input class="form-check-input settings-switch"
+                     type="checkbox"
+                     role="switch"
+                     id="settingsCompact">
+            </div>
           </div>
+
           <div class="settings-preference-row">
-            <label for="settingsMotion"><strong>Reduce Animations</strong><small>Minimize page transitions and effects.</small></label>
-            <div class="form-check form-switch"><input class="form-check-input settings-switch" type="checkbox" role="switch" id="settingsMotion"></div>
+            <label for="settingsMotion">
+              <strong>Reduce Animations</strong>
+              <small>Minimize page transitions and effects.</small>
+            </label>
+            <div class="form-check form-switch">
+              <input class="form-check-input settings-switch"
+                     type="checkbox"
+                     role="switch"
+                     id="settingsMotion">
+            </div>
           </div>
+
           <div class="settings-preference-row">
-            <label for="settingsDashboard"><strong>Default Dashboard View</strong></label>
-            <select class="form-select" id="settingsDashboard" disabled title="Dashboard selection is not connected"><option>Admin Dashboard</option></select>
+            <label for="settingsDashboard">
+              <strong>Default Dashboard View</strong>
+            </label>
+            <select class="form-select" id="settingsDashboard" disabled title="Dashboard selection is not connected">
+              <option>Admin Dashboard</option>
+            </select>
           </div>
-          <button type="button" id="saveSettings" class="btn btn-primary settings-save w-100"><i class="bi bi-floppy me-2"></i>Save Preferences</button>
-          <small class="settings-browser-note">Display preferences are saved in this browser.</small>
+
+          <button type="button"
+                  id="saveSettings"
+                  class="btn btn-primary settings-save w-100">
+            <i class="bi bi-floppy me-2"></i>Save Preferences
+          </button>
+
+          <small class="settings-browser-note">
+            Display preferences are saved in this browser.
+          </small>
         </div>
       </section>
     </div>
 
-    <!-- BUSINESS INFORMATION -->
-    <div class="col-12 col-xl-6">
-      <section class="settings-panel h-100">
-        <div class="settings-panel-heading">
-          <i class="bi bi-shop settings-heading-icon"></i>
-          <div class="settings-heading-copy"><h2>Business Information</h2><p>Your store details and contact information.</p></div>
-          <button class="btn btn-outline-primary settings-outline-action" type="button" disabled title="Business information editing is not connected yet"><i class="bi bi-pencil me-2"></i>Edit Business Info</button>
+
+<!-- BUSINESS INFORMATION -->
+<div class="col-12 col-xl-6">
+  <section class="settings-panel h-100">
+    <div class="settings-panel-heading">
+      <i class="bi bi-shop settings-heading-icon"></i>
+      <div class="settings-heading-copy">
+        <h2>Business Information</h2>
+        <p>Your store details and contact information.</p>
+      </div>
+      <button class="btn btn-outline-primary settings-outline-action"
+              type="button"
+              data-bs-toggle="modal"
+              data-bs-target="#editBusinessModal">
+        <i class="bi bi-pencil me-2"></i>Edit Business Info
+      </button>
+    </div>
+
+    <div class="settings-panel-inner">
+      <div class="settings-info-row">
+        <strong>Store Name</strong>
+        <span>{{ business_info.storeName if business_info else 'Happy Deli Junco' }}</span>
+      </div>
+      <div class="settings-info-row">
+        <strong>Address</strong>
+        <span>{{ business_info.address if business_info and business_info.address else 'Not configured' }}</span>
+      </div>
+      <div class="settings-info-row">
+        <strong>Phone</strong>
+        <span>{{ business_info.phone if business_info and business_info.phone else 'Not configured' }}</span>
+      </div>
+      <div class="settings-info-row">
+        <strong>Email</strong>
+        <span>{{ business_info.email if business_info and business_info.email else 'Not configured' }}</span>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- EDIT BUSINESS INFORMATION MODAL -->
+<div class="modal fade" id="editBusinessModal" tabindex="-1"
+     aria-labelledby="editBusinessModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" action="{{ url_for('update_business_info') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="modal-header">
+          <h5 class="modal-title" id="editBusinessModalLabel">Edit Business Information</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
+
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="businessStoreName" class="form-label">Store Name</label>
+            <input type="text" class="form-control" id="businessStoreName"
+                   name="storeName" maxlength="150" required
+                   value="{{ business_info.storeName if business_info else 'Happy Deli Junco' }}">
+          </div>
+
+          <div class="mb-3">
+            <label for="businessAddress" class="form-label">Address</label>
+            <input type="text" class="form-control" id="businessAddress"
+                   name="address" maxlength="255"
+                   value="{{ business_info.address or '' if business_info else '' }}">
+          </div>
+
+          <div class="mb-3">
+            <label for="businessPhone" class="form-label">Phone Number</label>
+            <input type="tel" class="form-control" id="businessPhone"
+                   name="phone" maxlength="30"
+                   value="{{ business_info.phone or '' if business_info else '' }}">
+          </div>
+
+          <div class="mb-3">
+            <label for="businessEmail" class="form-label">Email Address</label>
+            <input type="email" class="form-control" id="businessEmail"
+                   name="email" maxlength="100"
+                   value="{{ business_info.email or '' if business_info else '' }}">
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-floppy me-2"></i>Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+    
         <div class="settings-panel-inner">
-          <div class="settings-info-row"><strong>Store Name</strong><span>Happy Deli Junco</span></div>
-          <div class="settings-info-row"><strong>Address</strong><span class="text-muted">Not configured</span></div>
-          <div class="settings-info-row"><strong>Phone</strong><span class="text-muted">Not configured</span></div>
-          <div class="settings-info-row"><strong>Email</strong><span class="text-muted">Not configured</span></div>
+          <div class="settings-info-row">
+            <strong>Store Name</strong>
+            <span>Happy Deli Junco</span>
+          </div>
+          <div class="settings-info-row">
+            <strong>Address</strong>
+            <span class="text-muted">Not configured</span>
+          </div>
+          <div class="settings-info-row">
+            <strong>Phone</strong>
+            <span class="text-muted">Not configured</span>
+          </div>
+          <div class="settings-info-row">
+            <strong>Email</strong>
+            <span class="text-muted">Not configured</span>
+          </div>
         </div>
       </section>
     </div>
 
-    <!-- SYSTEM -->
+    <!-- SYSTEM INFORMATION -->
     <div class="col-12">
       <section class="settings-panel">
         <div class="settings-panel-heading">
           <i class="bi bi-info-circle-fill settings-heading-icon"></i>
-          <div class="settings-heading-copy"><h2>System Information</h2><p>Application details and version information.</p></div>
+          <div class="settings-heading-copy">
+            <h2>System Information</h2>
+            <p>Application details and version information.</p>
+          </div>
         </div>
+
         <div class="settings-system-grid">
-          <div class="settings-info-row"><strong>Application</strong><span>Happy Deli Junco POS</span></div>
-          <div class="settings-info-row"><strong>Environment</strong><span class="text-muted">Not available</span></div>
-          <div class="settings-info-row"><strong>Version</strong><span class="text-muted">Not available</span></div>
-          <div class="settings-info-row"><strong>Last Updated</strong><span class="text-muted">Not available</span></div>
+          <div class="settings-info-row">
+            <strong>Application</strong>
+            <span>Happy Deli Junco POS</span>
+          </div>
+          <div class="settings-info-row">
+            <strong>Environment</strong>
+            <span class="text-muted">Not available</span>
+          </div>
+          <div class="settings-info-row">
+            <strong>Version</strong>
+            <span class="text-muted">Not available</span>
+          </div>
+          <div class="settings-info-row">
+            <strong>Last Updated</strong>
+            <span class="text-muted">Not available</span>
+          </div>
         </div>
       </section>
     </div>
+
   </div>
 </div>
 {% endblock %}
@@ -132,32 +327,87 @@
 {{ super() }}
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+
   const settings = [
-    { id: "settingsCompact", key: "happyDeliCompactTables", className: "settings-compact" },
-    { id: "settingsMotion", key: "happyDeliReduceMotion", className: "settings-reduce-motion" }
+    {
+      id: "settingsCompact",
+      key: "happyDeliCompactTables",
+      className: "settings-compact"
+    },
+    {
+      id: "settingsMotion",
+      key: "happyDeliReduceMotion",
+      className: "settings-reduce-motion"
+    }
   ];
+
   const alertBox = document.getElementById("settingsAlert");
+  const themeSelect = document.getElementById("settingsTheme");
+
+  
+
+  // Load saved theme
+  try {
+    themeSelect.value = localStorage.getItem("happyDeliTheme") || "light";
+  } catch (error) {
+    themeSelect.value = "light";
+  }
+
+  // Load saved display preferences
   settings.forEach(item => {
     const input = document.getElementById(item.id);
-    try { input.checked = localStorage.getItem(item.key) === "true"; }
-    catch (error) { input.checked = false; }
+
+    try {
+      input.checked = localStorage.getItem(item.key) === "true";
+    } catch (error) {
+      input.checked = false;
+    }
+
     document.body.classList.toggle(item.className, input.checked);
   });
+
+  // Save preferences
   document.getElementById("saveSettings").addEventListener("click", function () {
     try {
+
+      // Save theme
+      localStorage.setItem("happyDeliTheme", themeSelect.value);
+
+      // Apply theme
+      document.documentElement.setAttribute(
+        "data-bs-theme",
+        themeSelect.value
+      );
+
+      // Save compact tables and reduced animations
       settings.forEach(item => {
         const checked = document.getElementById(item.id).checked;
+
         localStorage.setItem(item.key, String(checked));
+
         document.body.classList.toggle(item.className, checked);
       });
+
       alertBox.className = "alert alert-success";
-      alertBox.textContent = "Display preferences saved in this browser.";
+      alertBox.textContent = "Display preferences saved successfully.";
+
     } catch (error) {
+
       alertBox.className = "alert alert-warning";
-      alertBox.textContent = "Browser storage is unavailable. Preferences will only apply until this page is reloaded.";
-      settings.forEach(item => document.body.classList.toggle(item.className, document.getElementById(item.id).checked));
+      alertBox.textContent = "Unable to save preferences in this browser.";
+
+      settings.forEach(item => {
+        const checked = document.getElementById(item.id).checked;
+        document.body.classList.toggle(item.className, checked);
+      });
+
+      document.documentElement.setAttribute(
+        "data-bs-theme",
+        themeSelect.value
+      );
     }
   });
+
 });
 </script>
 {% endblock %}
