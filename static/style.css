@@ -1254,8 +1254,80 @@ body:has(.login-page) {
     height: 300px;
     width: 100%;
 }
+
+/*datepicker*/
+
+/* Date-range dropdown */
+.period-panel {
+    width: 330px;
+    max-width: calc(100vw - 24px);
+    z-index: 1080;
+}
+
+/* Keep the calendar inside the Bootstrap dropdown panel. */
+.calendar-host {
+    position: relative;
+    min-height: 290px;
+    margin: 12px 0 8px;
+}
+
+.calendar-host .datepicker,
+.calendar-host .datepicker-dropdown {
+    position: static !important;
+    inset: auto !important;
+    transform: none !important;
+    padding-top: 0;
+    margin: 0 auto;
+}
+
+.calendar-host .datepicker-dropdown::before,
+.calendar-host .datepicker-dropdown::after {
+    display: none;
+}
+
+.calendar-host .datepicker-picker {
+    width: 100%;
+    box-shadow: none;
+}
+
+/* Tint the days between the selected start and end dates. */
+.calendar-host .datepicker-cell.range:not(.selected) {
+    color: #123e6b;
+    background: #dbeafe;
+    border-radius: 0;
+}
+
+.calendar-host .datepicker-cell.range-start:not(.range-end) {
+    border-radius: 6px 0 0 6px;
+}
+
+.calendar-host .datepicker-cell.range-end:not(.range-start) {
+    border-radius: 0 6px 6px 0;
+}
+
+.calendar-host .datepicker-cell.selected,
+.calendar-host .datepicker-cell.selected:hover {
+    color: #fff;
+    background: #0d6efd;
+}
+
+/* Subtle loading state while the filtered report is fetched. */
+#reportContent.is-loading {
+    opacity: 0.55;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+}
+
+@media (max-width: 575.98px) {
+    .period-panel {
+        width: min(330px, calc(100vw - 24px));
+    }
+}
+
+
 /* =========================================
    SUPPLIER MANAGEMENT PAGE
+   ========================================= */
 .supplier-page { color: #123e6b; }
 
 .supplier-heading {
