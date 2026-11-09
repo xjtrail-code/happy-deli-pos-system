@@ -327,11 +327,31 @@ def admin_dashboard():
         )), 2
     )
 
+    
     # Inventory alerts
     low_stock_alerts = db.session.scalar(
         db.select(db.func.count(Inventory.id))
         .where(Inventory.quantityOnHand <= Inventory.reorderThreshold)
     ) or 0
+
+    # Five low-stock products needing attention
+    low_stock_products = db.session.scalars(
+        db.select(Inventory)
+        .join(Inventory.product)
+        .where(Inventory.quantityOnHand <= Inventory.reorderThreshold)
+        .order_by(
+            Inventory.quantityOnHand.asc(),
+            Inventory.productId.asc()
+        )
+        .limit(5)
+    ).all()
+
+    # Five most recent completed transactions
+    latest_transactions = sorted(
+        recent_transactions,
+        key=lambda transaction: transaction.transactionDate,
+        reverse=True
+    )[:5]
 
     return render_template(
         'admin_dashboard.html',
@@ -346,9 +366,11 @@ def admin_dashboard():
         period=period,
         start_date=start_date.isoformat(),
         end_date=end_date.isoformat(),
-        low_stock_products=low_stock_products,  
+        low_stock_products=low_stock_products,
         latest_transactions=latest_transactions,
+        sales_change=sales_change
     )
+
 
 
     # Five low-stock products needing attention
