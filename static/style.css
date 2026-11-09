@@ -1239,6 +1239,9 @@ body:has(.login-page) {
  .reports-page .margin-legend { width:100%; }
 }
 
+
+
+
 /* Dashboard category colors: classes instead of dynamic inline styles. */
 .category-color-1, .margin-color-1 { color: #1877f2; background-color: #1877f2; }
 .category-color-2, .margin-color-2 { color: #17b978; background-color: #17b978; }

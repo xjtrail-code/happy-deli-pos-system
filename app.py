@@ -243,6 +243,44 @@ def admin_dashboard():
     )
 
     todays_transactions = len(todays_transactions_list)
+        # Calculate gross profit margin
+    total_revenue = Decimal('0.00')
+    total_cost = Decimal('0.00')
+
+    for transaction in recent_transactions:
+        for item in transaction.items:
+            quantity = int(item.quantity or 0)
+            total_revenue += item.lineTotal or Decimal('0.00')
+            total_cost += (item.unitCost or Decimal('0.00')) * quantity
+
+    if total_revenue > 0:
+        profit_margin = float(
+            (total_revenue - total_cost) / total_revenue * Decimal('100')
+        )
+    else:
+        profit_margin = None
+
+    # Calculate gross profit margin for selected date range
+    total_revenue = Decimal('0.00')
+    total_cost = Decimal('0.00')
+
+    for transaction in recent_transactions:
+        for item in transaction.items:
+            quantity = int(item.quantity or 0)
+
+            total_revenue += item.lineTotal or Decimal('0.00')
+
+            total_cost += (
+                (item.unitCost or Decimal('0.00')) * quantity
+            )
+
+    if total_revenue > 0:
+        profit_margin = float(
+            (total_revenue - total_cost)
+            / total_revenue * Decimal('100')
+        )
+    else:
+        profit_margin = None
 
     # Sales chart
     sales_labels = []
@@ -285,7 +323,7 @@ def admin_dashboard():
         todays_sales=todays_sales,
         todays_transactions=todays_transactions,
         low_stock_alerts=low_stock_alerts,
-        profit_margin=None,
+        profit_margin=profit_margin,
         sales_labels=sales_labels,
         sales_data=sales_data,
         cash_sales=cash_sales,

@@ -53,85 +53,127 @@
 
     </div>
 
-    <!-- KPI CARDS -->
-    <div class="row g-3 mb-3">
+    
+<!-- KPI CARDS -->
+<div class="row g-3 mb-3">
 
-        <div class="col-6 col-xl-4">
-            <section class="report-card metric-card metric-sales">
-                <div class="card-body">
-                    <div class="d-flex align-items-center gap-3">
-                        <span class="metric-icon">
-                            <i class="bi bi-wallet2"></i>
-                        </span>
-                        <span class="metric-label">Today's Sales</span>
-                    </div>
-                    <div class="metric-value">
-                        ${{ "%.2f"|format(todays_sales|default(0, true)) }}
-                    </div>
-                    <div class="metric-note">Completed sales today</div>
+    <!-- TODAY'S SALES -->
+    <div class="col-6 col-xl-3">
+        <section class="report-card metric-card metric-sales">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="metric-icon">
+                        <i class="bi bi-wallet2"></i>
+                    </span>
+                    <span class="metric-label">Today's Sales</span>
                 </div>
-            </section>
-        </div>
 
-        <div class="col-6 col-xl-4">
-            <section class="report-card metric-card metric-orders">
-                <div class="card-body">
-                    <div class="d-flex align-items-center gap-3">
-                        <span class="metric-icon">
-                            <i class="bi bi-receipt-cutoff"></i>
-                        </span>
-                        <span class="metric-label">Today's Transactions</span>
-                    </div>
-                    <div class="metric-value">
-                        {{ todays_transactions|default(0, true) }}
-                    </div>
-                    <div class="metric-note">Completed transactions today</div>
+                <div class="metric-value">
+                    ${{ "%.2f"|format(todays_sales|default(0, true)) }}
                 </div>
-            </section>
-        </div>
 
-        <div class="col-12 col-xl-4">
-            <section class="report-card metric-card metric-margin">
-                <div class="card-body">
-                    <div class="d-flex align-items-center gap-3">
-                        <span class="metric-icon">
-                            <i class="bi bi-exclamation-triangle"></i>
-                        </span>
-                        <span class="metric-label">Low Stock Alerts</span>
-                    </div>
-                    <div class="metric-value">
-                        {{ low_stock_alerts|default(0, true) }}
-                    </div>
-                    <div class="metric-note">
-                        <a href="{{ url_for('inventory') }}">
-                            View Inventory
-                        </a>
-                    </div>
-                </div>
-            </section>
-        </div>
-
+                <div class="metric-note">Completed sales today</div>
+            </div>
+        </section>
     </div>
 
-    <!-- CHARTS -->
-    <div class="row g-3 mb-3">
-
-        <div class="col-12 col-xl-7">
-            <section class="report-card h-100">
-                <div class="card-body">
-                    <div class="report-card-header">
-                        <h3 class="report-section-title">
-                            Sales Trend 
-                        </h3>
-                        <span class="small text-muted">Daily revenue</span>
-                    </div>
-                    <div class="chart-wrap trend-chart" style="height:320px;">
-                        <canvas id="dashboardSalesChart"></canvas>
-                    </div>
+    <!-- TODAY'S TRANSACTIONS -->
+    <div class="col-6 col-xl-3">
+        <section class="report-card metric-card metric-orders">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="metric-icon">
+                        <i class="bi bi-receipt-cutoff"></i>
+                    </span>
+                    <span class="metric-label">Today's Transactions</span>
                 </div>
-            </section>
-        </div>
 
+                <div class="metric-value">
+                    {{ todays_transactions|default(0, true) }}
+                </div>
+
+                <div class="metric-note">Completed transactions today</div>
+            </div>
+        </section>
+    </div>
+
+    <!-- LOW STOCK ALERTS -->
+    <div class="col-6 col-xl-3">
+        <section class="report-card metric-card metric-margin">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="metric-icon">
+                        <i class="bi bi-exclamation-triangle"></i>
+                    </span>
+                    <span class="metric-label">Low Stock Alerts</span>
+                </div>
+
+                <div class="metric-value">
+                    {{ low_stock_alerts|default(0, true) }}
+                </div>
+
+                <div class="metric-note">
+                    <a href="{{ url_for('inventory') }}">
+                        View Inventory
+                    </a>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- PROFIT MARGIN -->
+    <div class="col-6 col-xl-3">
+        <section class="report-card metric-card metric-profit">
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <span class="metric-icon">
+                        <i class="bi bi-graph-up-arrow"></i>
+                    </span>
+                    <span class="metric-label">Profit Margin</span>
+                </div>
+
+                <div class="metric-value">
+                    {% if profit_margin is defined and profit_margin is not none %}
+                        {{ "%.1f"|format(profit_margin) }}%
+                    {% else %}
+                        N/A
+                    {% endif %}
+                </div>
+
+                <div class="metric-note">
+                    Gross profit margin for selected period
+                </div>
+            </div>
+        </section>
+    </div>
+
+</div>
+
+<!-- CHARTS -->
+<div class="row g-3 mb-3">
+
+    <!-- SALES TREND CHART -->
+    <div class="col-12 col-xl-7">
+        <section class="report-card h-100">
+            <div class="card-body">
+                <div class="report-card-header">
+                    <h3 class="report-section-title">
+                        Sales Trend
+                    </h3>
+                    <span class="small text-muted">
+                        Daily revenue
+                    </span>
+                </div>
+
+                <div class="chart-wrap trend-chart" style="height:320px;">
+                    <canvas id="dashboardSalesChart"></canvas>
+                </div>
+            </div>
+        </section>
+    </div>
+
+
+        <!-- PAYMENT BREAKDOWN CHART -->
         <div class="col-12 col-xl-5">
             <section class="report-card h-100">
                 <div class="card-body">
@@ -140,17 +182,22 @@
                             Payment Breakdown
                         </h3>
                     </div>
-                    <div class="chart-wrap" style="height:320px;">
+
+                    <div class="chart-wrap"
+                         style="height:320px;">
                         <canvas id="dashboardPaymentChart"></canvas>
                     </div>
-                    <p id="paymentEmpty" class="text-center text-muted small d-none">
-                        No completed payments in the last 7 days.
+
+                    <p id="paymentEmpty"
+                       class="text-center text-muted small d-none">
+                        No completed payments in the selected period.
                     </p>
                 </div>
             </section>
         </div>
 
     </div>
+
 
     <!-- INVENTORY ALERTS -->
     <div class="row g-3 mb-3">
