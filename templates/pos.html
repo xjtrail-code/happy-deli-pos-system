@@ -95,6 +95,7 @@
                                     <th>Quantity</th>
                                     <th>Price</th>
                                     <th class="text-end">Total</th>
+                                    <th class="text-center">Remove</th>
                                 </tr>
                             </thead>
 
@@ -256,6 +257,7 @@ function clearAlert() {
     $("posAlert").className = "alert d-none";
 }
 
+
 function displayCart() {
     const cartTable = $("cart");
     cartTable.innerHTML = "";
@@ -277,7 +279,56 @@ function displayCart() {
         totalCell.textContent =
             "$" + (item.price * item.quantity).toFixed(2);
 
-        row.append(nameCell, quantityCell, priceCell, totalCell);
+        // REMOVE BUTTONS
+        const removeCell = document.createElement("td");
+        removeCell.className = "text-center";
+
+        // REMOVE ONE QUANTITY
+        const decreaseButton = document.createElement("button");
+        decreaseButton.type = "button";
+        decreaseButton.className =
+            "btn btn-sm btn-outline-secondary me-2";
+        decreaseButton.textContent = "−";
+        decreaseButton.title = "Remove one item";
+
+        decreaseButton.addEventListener("click", function () {
+            if (item.quantity > 1) {
+                item.quantity -= 1;
+            } else {
+                cart = cart.filter(cartItem => cartItem !== item);
+            }
+
+            displayCart();
+            calculateTotals();
+            clearAlert();
+        });
+
+        // REMOVE ENTIRE PRODUCT
+        const removeButton = document.createElement("button");
+        removeButton.type = "button";
+        removeButton.className =
+            "btn btn-sm btn-outline-danger";
+        removeButton.textContent = "×";
+        removeButton.title = "Remove entire product";
+
+        removeButton.addEventListener("click", function () {
+            cart = cart.filter(cartItem => cartItem !== item);
+
+            displayCart();
+            calculateTotals();
+            clearAlert();
+        });
+
+        removeCell.append(decreaseButton, removeButton);
+
+        row.append(
+            nameCell,
+            quantityCell,
+            priceCell,
+            totalCell,
+            removeCell
+        );
+
         cartTable.appendChild(row);
     }
 
@@ -291,6 +342,7 @@ function displayCart() {
     $("emptyCart").style.display =
         cart.length === 0 ? "block" : "none";
 }
+
 
 function calculateTotals() {
     let subtotal = 0;
@@ -338,7 +390,7 @@ function resetTransaction() {
     $("productSearch").focus();
 }
 
-// ADD ITEM
+ // ADD ITEM
 $("addItemButton").addEventListener("click", function () {
     clearAlert();
 
@@ -356,6 +408,19 @@ $("addItemButton").addEventListener("click", function () {
             const existingItem = cart.find(
                 item => item.barcode === search
             );
+
+            const currentQuantity = existingItem
+                ? existingItem.quantity
+                : 0;
+
+            // CHECK AVAILABLE STOCK
+            if (currentQuantity >= product.quantity) {
+                showAlert(
+                    product.name + " is out of stock or has reached " +
+                    "the available quantity. Reorder product."
+                );
+                return;
+            }
 
             if (existingItem) {
                 existingItem.quantity += 1;
@@ -448,7 +513,7 @@ $("completeSaleButton").addEventListener("click", function () {
             resetTransaction();
             showAlert("Sale completed successfully!", "success");
         } else {
-            showAlert(data.message || "Unable to complete sale.");
+            showAlert(data.error || "Unable to complete sale.");
         }
     })
     .catch(error => {
