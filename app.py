@@ -243,22 +243,37 @@ def admin_dashboard():
     )
 
     todays_transactions = len(todays_transactions_list)
-        # Calculate gross profit margin
-    total_revenue = Decimal('0.00')
-    total_cost = Decimal('0.00')
 
-    for transaction in recent_transactions:
-        for item in transaction.items:
-            quantity = int(item.quantity or 0)
-            total_revenue += item.lineTotal or Decimal('0.00')
-            total_cost += (item.unitCost or Decimal('0.00')) * quantity
+    # Compare sales with the previous equivalent period
+    period_days = (end_date - start_date).days + 1
 
-    if total_revenue > 0:
-        profit_margin = float(
-            (total_revenue - total_cost) / total_revenue * Decimal('100')
+    previous_end = start_date - timedelta(days=1)
+    previous_start = previous_end - timedelta(days=period_days - 1)
+
+    previous_sales = db.session.scalar(
+        db.select(db.func.sum(Transaction.totalAmount))
+        .where(Transaction.status == 'completed')
+        .where(
+            Transaction.transactionDate >= datetime.combine(
+                previous_start, datetime.min.time()
+            )
         )
+        .where(
+            Transaction.transactionDate < datetime.combine(
+                start_date, datetime.min.time()
+            )
+        )
+    ) or Decimal('0.00')
+
+    if previous_sales > 0:
+        sales_change = (
+            (Decimal(str(todays_sales)) - previous_sales)
+            / previous_sales * Decimal('100')
+        )
+        sales_change = round(float(sales_change), 1)
     else:
-        profit_margin = None
+        sales_change = None
+
 
     # Calculate gross profit margin for selected date range
     total_revenue = Decimal('0.00')
@@ -326,13 +341,35 @@ def admin_dashboard():
         profit_margin=profit_margin,
         sales_labels=sales_labels,
         sales_data=sales_data,
+        sales_change=sales_change,
         cash_sales=cash_sales,
         card_sales=card_sales,
         period=period,
         start_date=start_date.isoformat(),
         end_date=end_date.isoformat()
+        low_stock_products=low_stock_products,
+        latest_transactions=latest_transactions,
     )
 
+
+    # Five low-stock products needing attention
+    low_stock_products = db.session.scalars(
+        db.select(Inventory)
+        .join(Inventory.product)
+        .where(Inventory.quantityOnHand <= Inventory.reorderThreshold)
+        .order_by(
+            Inventory.quantityOnHand.asc(),
+            Inventory.productId.asc()
+        )
+        .limit(5)
+    ).all()
+
+    # Five most recent completed transactions
+    latest_transactions = sorted(
+        recent_transactions,
+        key=lambda transaction: transaction.transactionDate,
+        reverse=True
+    )[:5]
 
 
 

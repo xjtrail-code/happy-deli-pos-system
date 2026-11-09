@@ -72,7 +72,15 @@
                     <span class="metric-icon">
                         <i class="bi bi-wallet2"></i>
                     </span>
-                    <span class="metric-label">Today's Sales</span>
+                    
+<span class="metric-label">
+    {% if period == 'today' %}
+        Today's Sales
+    {% else %}
+        Total Sales
+    {% endif %}
+</span>
+
                 </div>
 
                 <div class="metric-value">
@@ -92,7 +100,15 @@
                     <span class="metric-icon">
                         <i class="bi bi-receipt-cutoff"></i>
                     </span>
-                    <span class="metric-label">Today's Transactions</span>
+                    
+        <span class="metric-label">
+              {% if period == 'today' %}
+        Today's Transactions
+             {% else %}
+        Total Transactions
+                {% endif %}
+                </span>
+
                 </div>
 
                 <div class="metric-value">
@@ -206,28 +222,163 @@
     </div>
 
 
-    <!-- INVENTORY ALERTS -->
-    <div class="row g-3 mb-3">
-        <div class="col-12">
-            <section class="report-card">
-                <div class="card-body">
-                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-                        <div>
-                            <h3 class="report-section-title mb-2">
-                                <i class="bi bi-box-seam me-2"></i>
-                                Inventory Alerts
-                            </h3>
-                            <p class="text-muted mb-0">
-                                {{ low_stock_alerts|default(0, true) }}
-                                products currently need attention.
-                            </p>
-                        </div>
-                        <a href="{{ url_for('inventory') }}"
-                           class="btn btn-outline-primary">
-                            View Inventory
-                        </a>
-                    </div>
+    
+<!-- LOW STOCK & RECENT TRANSACTIONS -->
+<div class="row g-3 mb-3">
+
+    <!-- LOW STOCK PRODUCTS -->
+    <div class="col-12 col-xl-6">
+        <section class="report-card h-100">
+            <div class="card-body">
+
+                <div class="d-flex flex-wrap justify-content-between
+                            align-items-center gap-2 mb-3">
+
+                    <h3 class="report-section-title mb-0">
+                        <i class="bi bi-exclamation-triangle
+                                   text-warning me-2"></i>
+                        Low-Stock Products
+                    </h3>
+
+                    <a href="{{ url_for('inventory') }}"
+                       class="btn btn-sm btn-outline-primary">
+                        View Inventory
+                    </a>
                 </div>
+
+                <p class="text-muted small mb-3">
+                    {{ low_stock_alerts }} products need attention.
+                </p>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th class="text-center">On Hand</th>
+                                <th class="text-center">Reorder At</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for stock in low_stock_products %}
+                            <tr>
+                                <td>
+                                    {{ stock.product.productName }}
+                                </td>
+
+                                <td class="text-center">
+                                    <span class="badge bg-danger">
+                                        {{ stock.quantityOnHand }}
+                                    </span>
+                                </td>
+
+                                <td class="text-center">
+                                    {{ stock.reorderThreshold }}
+                                </td>
+                            </tr>
+
+                            {% else %}
+                            <tr>
+                                <td colspan="3"
+                                    class="text-center text-muted py-4">
+                                    No low-stock products.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+
+                    </table>
+                </div>
+
+            </div>
+        </section>
+    </div>
+
+    <!-- RECENT TRANSACTIONS -->
+    <div class="col-12 col-xl-6">
+        <section class="report-card h-100">
+            <div class="card-body">
+
+                <div class="d-flex flex-wrap justify-content-between
+                            align-items-center gap-2 mb-3">
+
+                    <h3 class="report-section-title mb-0">
+                        <i class="bi bi-receipt me-2"></i>
+                        Recent Transactions
+                    </h3>
+
+                    <a href="{{ url_for('receipts') }}"
+                       class="btn btn-sm btn-outline-primary">
+                        View Receipts
+                    </a>
+                </div>
+
+                <p class="text-muted small mb-3">
+                    Latest completed sales for the selected period.
+                </p>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+
+                        <thead>
+                            <tr>
+                                <th>Transaction</th>
+                                <th>Date</th>
+                                <th>Payment</th>
+                                <th class="text-end">Total</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for transaction in latest_transactions %}
+                            <tr>
+                                <td>
+                                    #{{ transaction.transactionID }}
+                                </td>
+
+                                <td>
+                                    {{ transaction.transactionDate.strftime('%m/%d/%Y %I:%M %p') }}
+                                </td>
+
+                                <td>
+                                    {% if transaction.paymentMethod == 'cash' %}
+                                        <span class="badge bg-success">
+                                            Cash
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-primary">
+                                            Card
+                                        </span>
+                                    {% endif %}
+                                </td>
+
+                                <td class="text-end fw-semibold">
+                                    ${{ "%.2f"|format(transaction.totalAmount) }}
+                                </td>
+                            </tr>
+
+                            {% else %}
+                            <tr>
+                                <td colspan="4"
+                                    class="text-center text-muted py-4">
+                                    No completed transactions
+                                    for this period.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+
+                    </table>
+                </div>
+
+            </div>
+        </section>
+    </div>
+
+</div>
+
             </section>
         </div>
     </div>

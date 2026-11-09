@@ -34,7 +34,6 @@
 {% block content %}
 <div class="container-fluid py-4">
   <h1>Employee Management</h1>
-  <p class="text-muted">Create individual accounts and control each employee's access. Permission and activation changes apply on their next request.</p>
   {% if error %}<div class="alert alert-danger" role="alert">{{ error }} Please re-enter your changes.</div>{% endif %}
   {% for category, message in get_flashed_messages(with_categories=true) %}<div class="alert alert-{{ category }}" role="status">{{ message }}</div>{% endfor %}
   <section class="card shadow-sm mb-4"><div class="card-body"><h2 class="h4">Create employee</h2>{{ employee_form() }}</div></section>
