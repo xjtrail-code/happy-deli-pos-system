@@ -341,13 +341,12 @@ def admin_dashboard():
         profit_margin=profit_margin,
         sales_labels=sales_labels,
         sales_data=sales_data,
-        sales_change=sales_change,
         cash_sales=cash_sales,
         card_sales=card_sales,
         period=period,
         start_date=start_date.isoformat(),
-        end_date=end_date.isoformat()
-        low_stock_products=low_stock_products,
+        end_date=end_date.isoformat(),
+        low_stock_products=low_stock_products,  
         latest_transactions=latest_transactions,
     )
 
