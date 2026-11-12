@@ -13,6 +13,7 @@ from decimal import Decimal, InvalidOperation
 
 from models import db, PERMISSIONS, UserPermission, PurchaseReceipt, PurchaseReceiptItem, BusinessInfo
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import contains_eager, joinedload, selectinload
 from models import (User, Category, Product, Transaction, TransactionItem, 
                     Inventory, Supplier, SupplierProduct, InventoryAdjustment, 
                     DemandForecast, LowStockAlert, ReorderRecommendation)
@@ -70,54 +71,6 @@ def test_db():
         return "Database connection successful!"
     except Exception as e:
         return f"Database connection failed: {e}"
-'''
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
-    role = db.Column(db.String(20), nullable=False)
-    __table_args__ = (db.CheckConstraint("role IN ('admin', 'cashier')"),)
-
-
-class Product(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    barcode = db.Column(db.String(100), unique=True, nullable=False)
-    name = db.Column(db.String(100), nullable=False)
-    price = db.Column(db.Float, nullable=False)
-    quantity = db.Column(db.Integer, nullable=False)
-
-class Sale(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    total = db.Column(db.Float, nullable=False)
-    payment_method = db.Column(db.String(20), nullable=False)
-    created_at = db.Column(
-        db.DateTime,
-        nullable=False,
-        default=db.func.now()
-    )'''
-'''
-PRODUCT_SEED = [
-    ("012345678901", "Whole Milk 1 Gal", 3.99, 40),
-    ("012345678902", "Large Eggs 12ct", 4.29, 55),
-    ("012345678903", "White Bread Loaf", 2.49, 35),
-    ("012345678904", "Butter Unsalted 1 lb", 4.99, 30),
-    ("012345678905", "Cheddar Cheese 8 oz", 3.79, 28),
-    ("012345678906", "Bananas 1 lb", 0.69, 120),
-    ("012345678907", "Gala Apples 1 lb", 1.99, 80),
-    ("012345678908", "Chicken Breast 1 lb", 5.49, 25),
-    ("012345678909", "Ground Beef 1 lb", 6.99, 22),
-    ("012345678910", "Spaghetti Pasta 16 oz", 1.89, 60),
-    ("012345678911", "Marinara Sauce 24 oz", 3.29, 45),
-    ("012345678912", "Long Grain Rice 2 lb", 2.99, 50),
-    ("012345678913", "Orange Juice 52 oz", 4.49, 33),
-    ("012345678914", "Bottled Water 24pk", 5.99, 38),
-    ("012345678915", "Cola 12pk Cans", 7.49, 42),
-    ("012345678916", "Potato Chips 8 oz", 3.49, 65),
-    ("012345678917", "Chocolate Bar", 1.49, 100),
-    ("012345678918", "Ground Coffee 12 oz", 8.99, 27),
-    ("012345678919", "Paper Towels 6 Roll", 9.99, 20),
-    ("012345678920", "Dish Soap 20 oz", 3.99, 36),
-]'''
 
 
 def login_required(role=None, permission=None):
@@ -375,7 +328,7 @@ def admin_dashboard():
     )
 
 
-
+"""
     # Five low-stock products needing attention
     low_stock_products = db.session.scalars(
         db.select(Inventory)
@@ -394,7 +347,7 @@ def admin_dashboard():
         key=lambda transaction: transaction.transactionDate,
         reverse=True
     )[:5]
-
+"""
 
 
 @app.route('/pos')
@@ -631,8 +584,55 @@ def product_entry():
 @app.route('/inventory')
 @login_required(permission='inventory')
 def inventory():
-    products = db.session.scalars(db.select(Product).where(Product.isActive.is_(True)).order_by(Product.productName)).all()
-    return render_template('inventory.html', products=products)
+    q = request.args.get('q', '').strip()
+    stock = request.args.get('stock', 'all')
+    if stock not in ('all', 'low', 'out'):
+        stock = 'all'
+    page_num = request.args.get('page', 1, type=int)
+
+    qty = db.func.coalesce(Inventory.quantityOnHand, 0)
+
+    base = (
+        db.select(Product)
+        .outerjoin(Inventory, Inventory.productId == Product.id)
+        .outerjoin(Category, Category.id == Product.categoryId)
+        .where(Product.isActive.is_(True))
+    )
+
+    # Summary cards: one aggregate query over ALL active products.
+    total, out_count, low_count = db.session.execute(
+        db.select(
+            db.func.count(Product.id),
+            db.func.count(Product.id).filter(qty == 0),
+            db.func.count(Product.id).filter(qty > 0, qty <= Inventory.reorderThreshold),
+        )
+        .select_from(Product)
+        .outerjoin(Inventory, Inventory.productId == Product.id)
+        .where(Product.isActive.is_(True))
+    ).one()
+    summary = {'total': total, 'out': out_count, 'low': low_count,
+               'in_stock': total - out_count}
+
+    # Search and filter, applied in SQL.
+    if q:
+        base = base.where(db.or_(
+            Product.productName.icontains(q, autoescape=True),
+            Product.barcode.icontains(q, autoescape=True),
+            Category.categoryName.icontains(q, autoescape=True),
+        ))
+    if stock == 'out':
+        base = base.where(qty == 0)
+    elif stock == 'low':
+        base = base.where(qty > 0, qty <= Inventory.reorderThreshold)
+
+    query = (
+        base.options(contains_eager(Product.inventory), contains_eager(Product.category))
+        .order_by(Product.productName)
+    )
+    pagination = db.paginate(query, page=page_num, per_page=25, error_out=False)
+
+    return render_template('inventory.html', pagination=pagination,
+                           summary=summary, q=q, stock=stock)
 
 
 @app.post('/inventory/receive')
@@ -700,7 +700,9 @@ def _csv_unsafe(value):
 @login_required(permission='inventory')
 def export_inventory_csv():
     products = db.session.scalars(
-        db.select(Product).where(Product.isActive.is_(True)).order_by(Product.productName)
+        db.select(Product)
+        .options(joinedload(Product.inventory), joinedload(Product.category))
+        .where(Product.isActive.is_(True)).order_by(Product.productName)
     ).all()
 
     df = pd.DataFrame(
@@ -755,7 +757,9 @@ def import_inventory_csv():
         flash(f'The CSV has too many rows (maximum {MAX_IMPORT_ROWS:,}).', 'danger')
         return redirect(url_for('inventory'))
 
-    products_by_barcode = {p.barcode: p for p in db.session.scalars(db.select(Product)).all()}
+    products_by_barcode = {p.barcode: p for p in db.session.scalars(
+        db.select(Product).options(selectinload(Product.inventory), joinedload(Product.category))
+    ).all()}
     categories = {c.categoryName.lower(): c for c in db.session.scalars(db.select(Category)).all()}
 
     errors, seen = [], set()
