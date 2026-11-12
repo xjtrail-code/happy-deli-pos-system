@@ -5,52 +5,44 @@
   <div class="inventory-heading">
     <div><h1>Inventory</h1></div>
     <div class="inventory-heading-actions">
-      <div class="input-group inventory-search"><span class="input-group-text"><i class="bi bi-search"></i></span><input id="inventory-search" class="form-control" type="search" placeholder="Search by product name, barcode, or category..." aria-label="Search inventory"></div>
+      <div class="input-group inventory-search"><span class="input-group-text"><i class="bi bi-search"></i></span><input id="inventory-search" class="form-control" type="search" value="{{ q }}" placeholder="Search by product name, barcode, or category..." aria-label="Search inventory"></div>
       {% if g.user.has_permission('products') %}<a class="btn btn-primary add-product-btn" href="{{ url_for('categories') }}"><i class="bi bi-tags-fill"></i> Manage Categories</a>{% endif %}
       {% if g.user.has_permission('products') %}<a class="btn btn-primary add-product-btn" href="{{ url_for('product_entry') }}"><i class="bi bi-plus-lg"></i> Add Product</a>{% endif %}
     </div>
   </div>
   {% if request.args.get('stock_added') %}<div class="alert alert-success alert-dismissible fade show">Stock received and inventory updated successfully.<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{% elif request.args.get('updated') %}<div class="alert alert-success alert-dismissible fade show">Inventory updated successfully.<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{% endif %}
   {% for category, message in get_flashed_messages(with_categories=true) %}<div class="alert alert-{{ category }} alert-dismissible fade show" role="status">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{% endfor %}
-  {% set total = products|length %}
-  {% set counts = namespace(in_stock=0, low=0, out=0) %}
-  {% for p in products %}
-    {% set q = p.inventory.quantityOnHand if p.inventory else 0 %}
-    {% set threshold = p.inventory.reorderThreshold if p.inventory else 0 %}
-    {% if q == 0 %}{% set counts.out = counts.out + 1 %}
-    {% else %}{% set counts.in_stock = counts.in_stock + 1 %}{% if q <= threshold %}{% set counts.low = counts.low + 1 %}{% endif %}{% endif %}
-  {% endfor %}
   <div class="inventory-summary-strip">
-    <div class="inventory-stat"><span class="stat-icon blue"><i class="bi bi-box-seam"></i></span><div><span>Total Products</span><strong>{{ total }}</strong></div></div>
-    <div class="inventory-stat"><span class="stat-icon green"><i class="bi bi-check-circle-fill"></i></span><div><span>In Stock</span><strong>{{ counts.in_stock }}</strong></div></div>
-    <div class="inventory-stat"><span class="stat-icon amber"><i class="bi bi-exclamation-triangle-fill"></i></span><div><span>Low Stock</span><strong>{{ counts.low }}</strong></div></div>
-    <div class="inventory-stat"><span class="stat-icon red"><i class="bi bi-x-circle-fill"></i></span><div><span>Out of Stock</span><strong>{{ counts.out }}</strong></div></div>
+    <div class="inventory-stat"><span class="stat-icon blue"><i class="bi bi-box-seam"></i></span><div><span>Total Products</span><strong>{{ summary.total }}</strong></div></div>
+    <div class="inventory-stat"><span class="stat-icon green"><i class="bi bi-check-circle-fill"></i></span><div><span>In Stock</span><strong>{{ summary.in_stock }}</strong></div></div>
+    <div class="inventory-stat"><span class="stat-icon amber"><i class="bi bi-exclamation-triangle-fill"></i></span><div><span>Low Stock</span><strong>{{ summary.low }}</strong></div></div>
+    <div class="inventory-stat"><span class="stat-icon red"><i class="bi bi-x-circle-fill"></i></span><div><span>Out of Stock</span><strong>{{ summary.out }}</strong></div></div>
   </div>
   <div class="inventory-filters" role="group" aria-label="Filter products">
-    <button type="button" class="btn btn-primary active" data-stock-filter="all">All Products</button>
-    <button type="button" class="btn btn-outline-primary" data-stock-filter="low">Low Stock</button>
-    <button type="button" class="btn btn-outline-primary" data-stock-filter="out">Out of Stock</button>
+    {% for key, label in [('all', 'All Products'), ('low', 'Low Stock'), ('out', 'Out of Stock')] %}
+      <a class="btn {{ 'btn-primary active' if stock == key else 'btn-outline-primary' }}" href="{{ url_for('inventory', stock=key, q=q or None) }}">{{ label }}</a>
+    {% endfor %}
 
     <div class="ms-auto d-flex gap-2">
       {% if g.user.has_permission('products') %}
       <form id="import-csv-form" method="post" action="{{ url_for('import_inventory_csv') }}" enctype="multipart/form-data" class="d-inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="file" id="import-csv-file" name="csv_file" accept=".csv,text/csv" hidden>
-        <button type="button" id="import-csv-btn" class="btn btn-outline-primary"><i class="bi bi-upload"></i> Import CSV</button>
+        <button type="button" id="import-csv-btn" class="btn btn-outline-primary"><i class="bi bi-download"></i> Import CSV</button>
       </form>
       {% endif %}
-      <a class="btn btn-outline-primary" href="{{ url_for('export_inventory_csv') }}"><i class="bi bi-download"></i> Export CSV</a>
+      <a class="btn btn-outline-primary" href="{{ url_for('export_inventory_csv') }}"><i class="bi bi-upload"></i> Export CSV</a>
     </div>
   </div>
   <div class="inventory-table-card"><div class="table-responsive">
     <table class="table inventory-table align-middle mb-0">
       <thead><tr><th>Barcode</th><th>Product Name</th><th>Category</th><th>Price</th><th>Qty</th><th>Stock Status</th><th class="text-center">Actions</th></tr></thead>
       <tbody id="inventory-table-body">
-      {% for product in products %}
+      {% for product in pagination.items %}
         {% set qty = product.inventory.quantityOnHand if product.inventory else 0 %}
         {% set threshold = product.inventory.reorderThreshold if product.inventory else 0 %}
         {% if qty == 0 %}{% set state = 'out' %}{% elif qty <= threshold %}{% set state = 'low' %}{% else %}{% set state = 'in' %}{% endif %}
-        <tr data-product-row data-stock="{{ state }}" data-search="{{ (product.productName ~ ' ' ~ product.barcode ~ ' ' ~ (product.category.categoryName if product.category else ''))|lower }}">
+        <tr>
           <td class="barcode-cell">{{ product.barcode }}</td><td class="product-name-cell">{{ product.productName }}</td><td>{{ product.category.categoryName if product.category else 'Uncategorized' }}</td>
           <td class="price-cell">${{ "%.2f"|format(product.sellingPrice) }}</td><td class="quantity-cell">{{ qty }}</td>
           <td>{% if state == 'out' %}<span class="stock-badge stock-out"><i class="bi bi-circle-fill"></i> Out of Stock</span>{% elif state == 'low' %}<span class="stock-badge stock-low"><i class="bi bi-circle-fill"></i> Low Stock</span>{% else %}<span class="stock-badge stock-in"><i class="bi bi-circle-fill"></i> In Stock</span>{% endif %}</td>
@@ -58,11 +50,31 @@
             <button type="button" class="btn btn-primary btn-sm add-stock-trigger" title="Add stock" aria-label="Add stock for {{ product.productName }}" data-bs-toggle="modal" data-bs-target="#receiveStockModal" data-product-id="{{ product.id }}" data-product-name="{{ product.productName }}" data-product-quantity="{{ qty }}"><i class="bi bi-plus-lg"></i></button>
           </td>
         </tr>
-      {% else %}<tr><td colspan="7" class="empty-inventory">No products found. Add your first product to get started.</td></tr>{% endfor %}
-      <tr id="no-filter-results" hidden><td colspan="7" class="empty-inventory">No products match your search or filter.</td></tr>
+      {% else %}<tr><td colspan="7" class="empty-inventory">No products found.</td></tr>{% endfor %}
       </tbody>
     </table></div>
-    <div class="inventory-table-footer"><span id="inventory-result-count">Showing {{ total }} product{{ '' if total == 1 else 's' }}</span><nav aria-label="Inventory pages"><ul class="pagination pagination-sm mb-0" id="inventory-pagination"></ul></nav></div>
+    <div class="inventory-table-footer">
+      <span>{% if pagination.total %}Showing {{ pagination.first }}–{{ pagination.last }} of {{ pagination.total }} product{{ '' if pagination.total == 1 else 's' }}{% else %}Showing 0 products{% endif %}</span>
+      <nav aria-label="Inventory pages">
+        <ul class="pagination pagination-sm mb-0">
+          <li class="page-item {{ '' if pagination.has_prev else 'disabled' }}">
+            <a class="page-link" aria-label="Previous page" href="{{ url_for('inventory', page=pagination.prev_num, q=q or None, stock=stock) if pagination.has_prev else '#' }}"><i class="bi bi-chevron-left"></i></a>
+          </li>
+          {% for n in pagination.iter_pages(left_edge=1, right_edge=1, left_current=1, right_current=1) %}
+            {% if n %}
+            <li class="page-item {{ 'active' if n == pagination.page else '' }}">
+              <a class="page-link" href="{{ url_for('inventory', page=n, q=q or None, stock=stock) }}" {% if n == pagination.page %}aria-current="page"{% endif %}>{{ n }}</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% endif %}
+          {% endfor %}
+          <li class="page-item {{ '' if pagination.has_next else 'disabled' }}">
+            <a class="page-link" aria-label="Next page" href="{{ url_for('inventory', page=pagination.next_num, q=q or None, stock=stock) if pagination.has_next else '#' }}"><i class="bi bi-chevron-right"></i></a>
+          </li>
+        </ul>
+      </nav>
+    </div>
   </div>
 </div>
 
@@ -126,87 +138,21 @@
 <script>
 function initInventoryPage() {
   const search = document.getElementById('inventory-search');
-  const rows = Array.from(document.querySelectorAll('[data-product-row]'));
-  const buttons = Array.from(document.querySelectorAll('[data-stock-filter]'));
-  const count = document.getElementById('inventory-result-count');
-  const noResults = document.getElementById('no-filter-results');
-  let filter = 'all';
-
-  const PAGE_SIZE = 10;
-  const pager = document.getElementById('inventory-pagination');
-  let page = 1;
-
-  // Which page buttons to show: 1 … 4 5 6 … 20
-  function pageList(current, total) {
-    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-    const nums = [...new Set([1, total, current - 1, current, current + 1])]
-      .filter(n => n >= 1 && n <= total).sort((a, b) => a - b);
-    const out = [];
-    nums.forEach((n, i) => {
-      if (i && n - nums[i - 1] > 1) out.push('…');
-      out.push(n);
-    });
-    return out;
-  }
-
-  function pageItem(label, target, opts) {
-    const o = opts || {};
-    return '<li class="page-item' + (o.disabled ? ' disabled' : '') + (o.active ? ' active' : '') + '">' +
-      '<button type="button" class="page-link" data-page="' + target + '"' +
-      (o.aria ? ' aria-label="' + o.aria + '"' : '') +
-      (o.active ? ' aria-current="page"' : '') +
-      (o.disabled ? ' disabled' : '') + '>' + label + '</button></li>';
-  }
-
-  function renderPager(pages) {
-    let html = pageItem('<i class="bi bi-chevron-left"></i>', page - 1, { disabled: page <= 1, aria: 'Previous page' });
-    pageList(page, pages).forEach(n => {
-      html += n === '…'
-        ? '<li class="page-item disabled"><span class="page-link">…</span></li>'
-        : pageItem(n, n, { active: n === page });
-    });
-    html += pageItem('<i class="bi bi-chevron-right"></i>', page + 1, { disabled: page >= pages, aria: 'Next page' });
-    pager.innerHTML = html;
-  }
-
-  pager.addEventListener('click', function (e) {
-    const btn = e.target.closest('button[data-page]');
-    if (!btn || btn.disabled) return;
-    page = Number(btn.dataset.page);
-    refresh();
+  let searchTimer;
+  search.addEventListener('input', function () {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      params.delete('page');                          
+      if (search.value.trim()) params.set('q', search.value.trim());
+      else params.delete('q');
+      window.location.search = params.toString();
+    }, 400);                                          // wait until typing pauses
   });
-
-  // Applies search + stock filter, then shows only the current page of the matches.
-  function refresh() {
-    const term = search.value.trim().toLowerCase();
-    const matches = rows.filter(row =>
-      row.dataset.search.includes(term) && (filter === 'all' || row.dataset.stock === filter));
-    const pages = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
-    page = Math.min(Math.max(page, 1), pages);
-    const start = (page - 1) * PAGE_SIZE;
-    const onPage = new Set(matches.slice(start, start + PAGE_SIZE));
-    rows.forEach(row => { row.hidden = !onPage.has(row); });
-    noResults.hidden = matches.length > 0;
-    count.textContent = matches.length
-      ? `Showing ${start + 1}–${start + onPage.size} of ${matches.length} product${matches.length === 1 ? '' : 's'}`
-      : 'Showing 0 products';
-    renderPager(pages);
+  if (search.value) {                                 // keep the cursor at the end after reload
+    search.focus();
+    search.setSelectionRange(search.value.length, search.value.length);
   }
-  search.addEventListener('input', function () { page = 1; refresh(); });
-  buttons.forEach(button => button.addEventListener('click', function () {
-    filter = this.dataset.stockFilter;
-    buttons.forEach(item => {
-      const active = item === this;
-      item.classList.toggle('btn-primary', active);
-      item.classList.toggle('btn-outline-primary', !active);
-      item.classList.toggle('active', active);
-      item.setAttribute('aria-pressed', String(active));
-    });
-    page = 1;
-    refresh();
-  }));
-
-  refresh();   // show page 1 right away
 
   const modal = document.getElementById('receiveStockModal');
   const form = document.getElementById('receive-stock-form');
@@ -227,18 +173,15 @@ function initInventoryPage() {
     return Number(totalUnits.value || 0);
   }
 
-  // Keeps the "Calculated units" label and the hidden field that gets POSTed in sync.
   function updateTotal() {
     const total = currentTotal();
     calculated.textContent = Number.isSafeInteger(total) ? total.toLocaleString() : '—';
     submittedTotal.value = Number.isSafeInteger(total) && total > 0 ? String(total) : '';
   }
 
-  // Called from onclick/onfocus on the inputs and onclick on the two cards.
-  // Nothing is disabled, so clicking ANY input box switches to that method.
   window.selectStockEntryMode = function (mode, clickEvent) {
     if (mode !== entryMode) {
-      // Clear the method being abandoned so only one method ever supplies the quantity.
+
       if (mode === 'cases') {
         totalUnits.value = '';
       } else {
@@ -252,7 +195,7 @@ function initInventoryPage() {
     error.hidden = true;
     updateTotal();
 
-    // Clicking the card's padding/label (not an input) moves the cursor into its first field.
+    // Clicking the card's padding/label moves the cursor into its first field.
     if (clickEvent && !clickEvent.target.closest('input')) {
       (mode === 'cases' ? cases : totalUnits).focus();
     }
@@ -275,7 +218,7 @@ function initInventoryPage() {
   modal.addEventListener('shown.bs.modal', () => totalUnits.focus());
 
   form.addEventListener('submit', function (event) {
-    if (!document.getElementById('receive-product-id').value) {   // modal wasn't opened from a product row
+    if (!document.getElementById('receive-product-id').value) {
       event.preventDefault();
       error.textContent = 'No product selected. Close this window and click the + button on a product row.';
       error.hidden = false;
@@ -301,11 +244,12 @@ function initInventoryPage() {
       return;
     }
 
-    submittedTotal.value = String(received);   // this is the only value the server reads
+    submittedTotal.value = String(received);
     nextButton.disabled = true;
     nextButton.textContent = 'Saving…';
   });
 
+  // CSV import button: opens the file picker, then uploads as soon as a file is chosen.
   const importBtn = document.getElementById('import-csv-btn');
   const importFile = document.getElementById('import-csv-file');
   if (importBtn && importFile) {
