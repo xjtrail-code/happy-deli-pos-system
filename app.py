@@ -20,7 +20,8 @@ from datetime import date, timedelta
 from functools import wraps
 
 import click
-from flask import Flask, abort, flash, g, redirect, render_template, request, session, url_for
+import pandas as pd
+from flask import Flask, Response, abort, flash, g, redirect, render_template, request, session, url_for
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -45,6 +46,8 @@ app.config.update(
     APP_BASE_URL=os.environ.get('APP_BASE_URL', '').rstrip('/'),
     PASSWORD_RESET_MAX_AGE=1800,
 )
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024   # 5 MB cap for CSV uploads
+
 if not app.config['SECRET_KEY']:
     os.makedirs(app.instance_path, exist_ok=True)
     key_path = os.path.join(app.instance_path, 'secret_key')
@@ -575,6 +578,190 @@ def receive_inventory_stock():
     db.session.commit()
     return redirect(url_for('inventory', stock_added=1))
 
+# ---------------------------------------------------------------------------
+# INVENTORY CSV EXPORT / IMPORT  (Barcode, Product Name, Category, Price, Qty)
+# ---------------------------------------------------------------------------
+INVENTORY_CSV_COLUMNS = ['Barcode', 'Product Name', 'Category', 'Price', 'Qty']
+CSV_FORMULA_CHARS = ('=', '+', '-', '@', '\t', '\r')
+MAX_IMPORT_ROWS = 20000
+
+
+def _csv_safe(value):
+    """Stop spreadsheet apps from running cell text as a formula."""
+    value = '' if value is None else str(value)
+    return "'" + value if value[:1] in CSV_FORMULA_CHARS else value
+
+
+def _csv_unsafe(value):
+    """Undo _csv_safe so an exported file re-imports unchanged."""
+    value = str(value).strip()
+    if len(value) > 1 and value[0] == "'" and value[1] in CSV_FORMULA_CHARS:
+        return value[1:]
+    return value
+
+
+@app.get('/inventory/export')
+@login_required(permission='inventory')
+def export_inventory_csv():
+    products = db.session.scalars(
+        db.select(Product).where(Product.isActive.is_(True)).order_by(Product.productName)
+    ).all()
+
+    df = pd.DataFrame(
+        [{
+            'Barcode': _csv_safe(p.barcode),
+            'Product Name': _csv_safe(p.productName),
+            'Category': _csv_safe(p.category.categoryName if p.category else ''),
+            'Price': f'{p.sellingPrice:.2f}',
+            'Qty': p.inventory.quantityOnHand if p.inventory else 0,
+        } for p in products],
+        columns=INVENTORY_CSV_COLUMNS,
+    )
+
+    # BOM (\ufeff) makes Excel read the file as UTF-8.
+    csv_text = '\ufeff' + df.to_csv(index=False)
+    filename = f'inventory_{datetime.now():%Y%m%d_%H%M}.csv'
+    return Response(
+        csv_text,
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename={filename}'},
+    )
+
+
+@app.post('/inventory/import')
+@login_required(permission='products')
+def import_inventory_csv():
+    upload = request.files.get('csv_file')
+    if not upload or not upload.filename:
+        flash('Choose a CSV file to import.', 'danger')
+        return redirect(url_for('inventory'))
+
+    try:
+        df = pd.read_csv(upload.stream, dtype=str, keep_default_na=False,
+                         encoding='utf-8-sig', skipinitialspace=True)
+    except (pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeDecodeError):
+        flash('Could not read that file. Please upload a valid UTF-8 CSV.', 'danger')
+        return redirect(url_for('inventory'))
+
+    # Accept "Qty" or "Qty." and any capitalization in the header row.
+    normalized = {str(c).strip().rstrip('.').lower(): c for c in df.columns}
+    missing = [c for c in INVENTORY_CSV_COLUMNS if c.lower() not in normalized]
+    if missing:
+        flash('Missing column(s): ' + ', '.join(missing) +
+              '. Required order: ' + ', '.join(INVENTORY_CSV_COLUMNS) + '.', 'danger')
+        return redirect(url_for('inventory'))
+    df = df.rename(columns={normalized[c.lower()]: c for c in INVENTORY_CSV_COLUMNS})[INVENTORY_CSV_COLUMNS]
+
+    if df.empty:
+        flash('The CSV file has no product rows.', 'danger')
+        return redirect(url_for('inventory'))
+    if len(df) > MAX_IMPORT_ROWS:
+        flash(f'The CSV has too many rows (maximum {MAX_IMPORT_ROWS:,}).', 'danger')
+        return redirect(url_for('inventory'))
+
+    products_by_barcode = {p.barcode: p for p in db.session.scalars(db.select(Product)).all()}
+    categories = {c.categoryName.lower(): c for c in db.session.scalars(db.select(Category)).all()}
+
+    errors, seen = [], set()
+    created = updated = unchanged = 0
+
+    for line, row in enumerate(df.to_dict('records'), start=2):   # line 1 is the header
+        try:
+            barcode = _csv_unsafe(row['Barcode'])
+            name = _csv_unsafe(row['Product Name'])
+            category_name = _csv_unsafe(row['Category']) or 'Uncategorized'
+
+            if not barcode or len(barcode) > 50:
+                raise ValueError('barcode is required (50 characters max).')
+            if 'e+' in barcode.lower():
+                raise ValueError(f'barcode "{barcode}" looks like Excel scientific notation. '
+                                 'Format the Barcode column as Text and re-save.')
+            if barcode in seen:
+                raise ValueError(f'barcode {barcode} appears more than once in the file.')
+            seen.add(barcode)
+            if not name or len(name) > 150:
+                raise ValueError('product name is required (150 characters max).')
+            if len(category_name) > 100:
+                raise ValueError('category name is too long (100 characters max).')
+
+            try:
+                price = Decimal(str(row['Price']).replace('$', '').replace(',', '').strip())
+                if not price.is_finite() or price < 0 or price > Decimal('99999999.99'):
+                    raise InvalidOperation
+                price = price.quantize(Decimal('0.01'))
+            except InvalidOperation:
+                raise ValueError('price must be a number of 0 or more.')
+
+            try:
+                qty_dec = Decimal(str(row['Qty']).replace(',', '').strip())
+                if not qty_dec.is_finite() or qty_dec != qty_dec.to_integral_value() \
+                        or not 0 <= qty_dec <= 1_000_000:
+                    raise InvalidOperation
+                qty = int(qty_dec)
+            except InvalidOperation:
+                raise ValueError('Qty must be a whole number between 0 and 1,000,000.')
+
+            category = categories.get(category_name.lower())
+            if category is None:
+                category = Category(categoryName=category_name)
+                db.session.add(category)
+                categories[category_name.lower()] = category
+
+            product = products_by_barcode.get(barcode)
+            if product is None:
+                product = Product(barcode=barcode, productName=name, sellingPrice=price,
+                                  taxRate=Decimal('0.0635'), category=category, isActive=True)
+                product.inventory = Inventory(quantityOnHand=qty, reorderThreshold=5,
+                                              reorderQuantity=20)
+                db.session.add(product)
+                products_by_barcode[barcode] = product
+                if qty > 0:
+                    db.session.add(InventoryAdjustment(
+                        product=product, userId=g.user.id, quantityChanged=qty,
+                        adjustmentType='addition', reason='CSV import (new product)'))
+                created += 1
+            else:
+                changed = (product.productName != name or product.sellingPrice != price
+                           or product.category is not category or not product.isActive)
+                product.productName = name
+                product.sellingPrice = price
+                product.category = category
+                product.isActive = True
+
+                if product.inventory is None:
+                    product.inventory = Inventory(quantityOnHand=0, reorderThreshold=5,
+                                                  reorderQuantity=20)
+                delta = qty - product.inventory.quantityOnHand
+                if delta:
+                    product.inventory.quantityOnHand = qty
+                    product.inventory.lastUpdated = datetime.now()
+                    db.session.add(InventoryAdjustment(
+                        product=product, userId=g.user.id, quantityChanged=delta,
+                        adjustmentType='correction', reason='CSV import (quantity set from file)'))
+                    changed = True
+                updated += 1 if changed else 0
+                unchanged += 0 if changed else 1
+
+        except ValueError as exc:
+            errors.append(f'Row {line}: {exc}')
+
+    if errors:
+        db.session.rollback()
+        shown = ' | '.join(errors[:5])
+        extra = f' (+{len(errors) - 5} more)' if len(errors) > 5 else ''
+        flash(f'Import cancelled, nothing was saved. {shown}{extra}', 'danger')
+        return redirect(url_for('inventory'))
+
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        app.logger.exception('Inventory CSV import failed')
+        flash('Import cancelled because of a database conflict. Nothing was saved.', 'danger')
+        return redirect(url_for('inventory'))
+
+    flash(f'Import complete: {created} added, {updated} updated, {unchanged} unchanged.', 'success')
+    return redirect(url_for('inventory'))
 
 @app.route('/categories', methods=['GET', 'POST'])
 @login_required(permission='products')

@@ -3,7 +3,7 @@
 {% block content %}
 <div class="inventory-page">
   <div class="inventory-heading">
-    <div><h1><i class="bi bi-list-ul"></i> Inventory</h1></div>
+    <div><h1>Inventory</h1></div>
     <div class="inventory-heading-actions">
       <div class="input-group inventory-search"><span class="input-group-text"><i class="bi bi-search"></i></span><input id="inventory-search" class="form-control" type="search" placeholder="Search by product name, barcode, or category..." aria-label="Search inventory"></div>
       {% if g.user.has_permission('products') %}<a class="btn btn-primary add-product-btn" href="{{ url_for('categories') }}"><i class="bi bi-tags-fill"></i> Manage Categories</a>{% endif %}
@@ -11,6 +11,7 @@
     </div>
   </div>
   {% if request.args.get('stock_added') %}<div class="alert alert-success alert-dismissible fade show">Stock received and inventory updated successfully.<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{% elif request.args.get('updated') %}<div class="alert alert-success alert-dismissible fade show">Inventory updated successfully.<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{% endif %}
+  {% for category, message in get_flashed_messages(with_categories=true) %}<div class="alert alert-{{ category }} alert-dismissible fade show" role="status">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{% endfor %}
   {% set total = products|length %}
   {% set counts = namespace(in_stock=0, low=0, out=0) %}
   {% for p in products %}
@@ -29,6 +30,17 @@
     <button type="button" class="btn btn-primary active" data-stock-filter="all">All Products</button>
     <button type="button" class="btn btn-outline-primary" data-stock-filter="low">Low Stock</button>
     <button type="button" class="btn btn-outline-primary" data-stock-filter="out">Out of Stock</button>
+
+    <div class="ms-auto d-flex gap-2">
+      {% if g.user.has_permission('products') %}
+      <form id="import-csv-form" method="post" action="{{ url_for('import_inventory_csv') }}" enctype="multipart/form-data" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="file" id="import-csv-file" name="csv_file" accept=".csv,text/csv" hidden>
+        <button type="button" id="import-csv-btn" class="btn btn-outline-primary"><i class="bi bi-upload"></i> Import CSV</button>
+      </form>
+      {% endif %}
+      <a class="btn btn-outline-primary" href="{{ url_for('export_inventory_csv') }}"><i class="bi bi-download"></i> Export CSV</a>
+    </div>
   </div>
   <div class="inventory-table-card"><div class="table-responsive">
     <table class="table inventory-table align-middle mb-0">
@@ -293,6 +305,18 @@ function initInventoryPage() {
     nextButton.disabled = true;
     nextButton.textContent = 'Saving…';
   });
+
+  const importBtn = document.getElementById('import-csv-btn');
+  const importFile = document.getElementById('import-csv-file');
+  if (importBtn && importFile) {
+    importBtn.addEventListener('click', () => importFile.click());
+    importFile.addEventListener('change', function () {
+      if (!this.files.length) return;
+      importBtn.disabled = true;
+      importBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Importing…';
+      document.getElementById('import-csv-form').submit();
+    });
+  }
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initInventoryPage);
 else initInventoryPage();
