@@ -632,7 +632,8 @@ def inventory():
     pagination = db.paginate(query, page=page_num, per_page=25, error_out=False)
 
     return render_template('inventory.html', pagination=pagination,
-                           summary=summary, q=q, stock=stock)
+                           summary=summary, q=q, stock=stock,
+                           adjustment_types=[(t, adjustment_direction(t)) for t in ADJUSTMENT_TYPES])
 
 
 @app.post('/inventory/receive')
@@ -673,6 +674,155 @@ def receive_inventory_stock():
     ))
     db.session.commit()
     return redirect(url_for('inventory', stock_added=1))
+
+# ---------------------------------------------------------------------------
+# INVENTORY ADJUSTMENTS: history (View details) and adjust (name / quantity)
+# ---------------------------------------------------------------------------
+ADJUSTMENT_TYPES = InventoryAdjustment.__table__.c.adjustmentType.type.enums
+
+def adjustment_direction(kind):
+    """'up' = can only raise stock, 'down' = can only lower it, 'any' = either."""
+    return {'addition': 'up', 'correction': 'any'}.get(kind, 'down')
+
+@app.get('/inventory/history')
+@login_required(permission='inventory')
+def inventory_history():
+    product_id = request.args.get('product_id', type=int)
+    if product_id is None:
+        abort(400, description='No product selected.')
+
+    limit = 100
+    rows = db.session.execute(
+        db.select(
+            InventoryAdjustment.quantityChanged,
+            InventoryAdjustment.adjustmentType,
+            InventoryAdjustment.reason,
+            InventoryAdjustment.createdDate,
+            User.username,
+        )
+        .select_from(InventoryAdjustment)
+        .join(User, User.id == InventoryAdjustment.userId)
+        .where(InventoryAdjustment.productId == product_id)
+        .order_by(InventoryAdjustment.createdDate.desc(),
+                  InventoryAdjustment.adjustmentID.desc())
+        .limit(limit + 1)          # one extra row tells us whether the list was cut off
+    ).all()
+
+    return {
+        'truncated': len(rows) > limit,
+        'items': [{
+            'username': r.username,
+            'quantity_changed': r.quantityChanged,
+            'adjustment_type': r.adjustmentType,
+            'reason': r.reason or '',
+            'date': r.createdDate.strftime('%m/%d/%Y %I:%M %p'),
+        } for r in rows[:limit]],
+    }
+
+
+@app.post('/inventory/adjust')
+@login_required(permission='inventory')
+def adjust_inventory():
+    def back():
+        return redirect(url_for('inventory',
+                                q=request.form.get('q') or None,
+                                stock=request.form.get('stock') or None,
+                                page=request.form.get('page', type=int)))
+
+    try:
+        product_id = int(request.form.get('product_id', ''))
+    except ValueError:
+        abort(400, description='No product selected.')
+
+    new_name = request.form.get('product_name', '').strip()
+    qty_raw = request.form.get('new_quantity', '').strip()
+    kind = request.form.get('adjustment_type', '').strip()
+    reason = request.form.get('reason', '').strip()
+
+    try:
+        # ---- Validate the form (empty fields mean "leave unchanged") ----
+        if new_name and not g.user.has_permission('products'):
+            raise ValueError('You do not have permission to rename products.')
+        if len(new_name) > 150:
+            raise ValueError('Product name must be 150 characters or fewer.')
+        if len(reason) > 255:
+            raise ValueError('Reason must be 255 characters or fewer.')
+        if kind and kind not in ADJUSTMENT_TYPES:
+            raise ValueError('Select a valid adjustment type.')
+
+        new_qty = None
+        if qty_raw:
+            try:
+                new_qty = int(qty_raw)
+            except ValueError:
+                raise ValueError('New quantity must be a whole number.')
+            if not 0 <= new_qty <= 1_000_000:
+                raise ValueError('New quantity must be between 0 and 1,000,000.')
+        if not new_name and new_qty is None:
+            raise ValueError('Enter a new product name or a new quantity.')
+
+        # ---- One JOIN loads the product and locks its stock row ----
+        row = db.session.execute(
+            db.select(Product, Inventory)
+            .select_from(Product)
+            .join(Inventory, Inventory.productId == Product.id)
+            .where(Product.id == product_id, Product.isActive.is_(True))
+            .with_for_update(of=Inventory)
+        ).first()
+        if row is None:
+            product = db.session.get(Product, product_id)     # product without an inventory row yet
+            if product is None or not product.isActive:
+                abort(404)
+            inv = Inventory(productId=product.id, quantityOnHand=0,
+                            reorderThreshold=0, reorderQuantity=0)
+            db.session.add(inv)
+        else:
+            product, inv = row
+
+        # ---- Work out what actually changes ----
+        renamed = bool(new_name) and new_name != product.productName
+        old_qty = inv.quantityOnHand
+        delta = (new_qty - old_qty) if new_qty is not None else 0
+
+        if delta:
+            if not kind:
+                raise ValueError('Select an adjustment type for the quantity change.')
+            direction = adjustment_direction(kind)
+            if direction == 'up' and delta < 0:
+                raise ValueError(f'"{kind.title()}" cannot lower the quantity. Use Correction instead.')
+            if direction == 'down' and delta > 0:
+                raise ValueError(f'"{kind.title()}" cannot raise the quantity. Use Addition or Correction instead.')
+
+        if not renamed and not delta:
+            db.session.rollback()
+            flash('No changes were made.', 'info')
+            return back()
+
+        # ---- Apply ----
+        parts = []
+        if renamed:
+            product.productName = new_name
+            parts.append('name updated')
+        if delta:
+            inv.quantityOnHand = new_qty
+            inv.lastUpdated = datetime.now()
+            db.session.add(InventoryAdjustment(
+                productId=product.id, userId=g.user.id, quantityChanged=delta,
+                adjustmentType=kind, reason=reason or None))
+            parts.append(f'quantity {old_qty:,} → {new_qty:,} ({kind})')
+
+        db.session.commit()
+        flash(f'{product.productName}: ' + ' and '.join(parts) + '.', 'success')
+
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), 'danger')
+    except IntegrityError:
+        db.session.rollback()
+        app.logger.exception('Inventory adjustment failed')
+        flash('Could not save the adjustment because of a database conflict. Nothing was changed.', 'danger')
+
+    return back()
 
 # ---------------------------------------------------------------------------
 # INVENTORY CSV EXPORT / IMPORT  (Barcode, Product Name, Category, Price, Qty)
@@ -765,7 +915,7 @@ def import_inventory_csv():
     errors, seen = [], set()
     created = updated = unchanged = 0
 
-    for line, row in enumerate(df.to_dict('records'), start=2):   # line 1 is the header
+    for line, row in enumerate(df.to_dict('records'), start=2):
         try:
             barcode = _csv_unsafe(row['Barcode'])
             name = _csv_unsafe(row['Product Name'])

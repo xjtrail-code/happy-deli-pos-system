@@ -28,10 +28,10 @@
       <form id="import-csv-form" method="post" action="{{ url_for('import_inventory_csv') }}" enctype="multipart/form-data" class="d-inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="file" id="import-csv-file" name="csv_file" accept=".csv,text/csv" hidden>
-        <button type="button" id="import-csv-btn" class="btn btn-outline-primary"><i class="bi bi-download"></i> Import CSV</button>
+        <button type="button" id="import-csv-btn" class="btn btn-outline-primary"><i class="bi bi-upload"></i> Import CSV</button>
       </form>
       {% endif %}
-      <a class="btn btn-outline-primary" href="{{ url_for('export_inventory_csv') }}"><i class="bi bi-upload"></i> Export CSV</a>
+      <a class="btn btn-outline-primary" href="{{ url_for('export_inventory_csv') }}"><i class="bi bi-download"></i> Export CSV</a>
     </div>
   </div>
   <div class="inventory-table-card"><div class="table-responsive">
@@ -47,7 +47,32 @@
           <td class="price-cell">${{ "%.2f"|format(product.sellingPrice) }}</td><td class="quantity-cell">{{ qty }}</td>
           <td>{% if state == 'out' %}<span class="stock-badge stock-out"><i class="bi bi-circle-fill"></i> Out of Stock</span>{% elif state == 'low' %}<span class="stock-badge stock-low"><i class="bi bi-circle-fill"></i> Low Stock</span>{% else %}<span class="stock-badge stock-in"><i class="bi bi-circle-fill"></i> In Stock</span>{% endif %}</td>
           <td class="text-center action-cell">
-            <button type="button" class="btn btn-primary btn-sm add-stock-trigger" title="Add stock" aria-label="Add stock for {{ product.productName }}" data-bs-toggle="modal" data-bs-target="#receiveStockModal" data-product-id="{{ product.id }}" data-product-name="{{ product.productName }}" data-product-quantity="{{ qty }}"><i class="bi bi-plus-lg"></i></button>
+            <div class="d-inline-flex align-items-center gap-2">
+              <button type="button" class="btn btn-primary btn-sm add-stock-trigger" title="Add stock" aria-label="Add stock for {{ product.productName }}" data-bs-toggle="modal" data-bs-target="#receiveStockModal" data-product-id="{{ product.id }}" data-product-name="{{ product.productName }}" data-product-quantity="{{ qty }}"><i class="bi bi-plus-lg"></i></button>
+              <div class="dropdown">
+                <button type="button" class="btn btn-outline-primary btn-sm add-stock-trigger row-actions-toggle"
+                        data-bs-toggle="dropdown" aria-expanded="false"
+                        aria-label="More actions for {{ product.productName }}" title="More actions">
+                  <i class="bi bi-three-dots"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                  <li>
+                    <button type="button" class="dropdown-item"
+                            data-bs-toggle="modal" data-bs-target="#inventoryHistoryModal"
+                            data-product-id="{{ product.id }}" data-product-name="{{ product.productName }}" data-product-quantity="{{ qty }}">
+                      <i class="bi bi-eye me-2"></i>View details
+                    </button>
+                  </li>
+                  <li>
+                    <button type="button" class="dropdown-item"
+                            data-bs-toggle="modal" data-bs-target="#adjustInventoryModal"
+                            data-product-id="{{ product.id }}" data-product-name="{{ product.productName }}" data-product-quantity="{{ qty }}">
+                      <i class="bi bi-sliders me-2"></i>Adjust inventory
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            </div>
           </td>
         </tr>
       {% else %}<tr><td colspan="7" class="empty-inventory">No products found.</td></tr>{% endfor %}
@@ -133,6 +158,99 @@
     </form>
   </div>
 </div>
+
+<!-- View details modal: adjustment history, loaded on demand -->
+<div class="modal fade" id="inventoryHistoryModal" tabindex="-1" aria-labelledby="inventoryHistoryTitle" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content inventory-modal">
+      <div class="modal-header">
+        <h5 class="modal-title" id="inventoryHistoryTitle"><i class="bi bi-clock-history"></i> Adjustment History</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <p class="mb-1"><strong id="history-product-label"></strong></p>
+        <p class="text-muted small">Current stock: <strong id="history-current-stock">0</strong> units</p>
+
+        <div id="history-loading" class="text-center text-muted py-4"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Loading…</div>
+        <div id="history-error" class="alert alert-danger py-2" role="alert" hidden></div>
+        <div id="history-empty" class="text-center text-muted py-4" hidden>No adjustments have been recorded for this product yet.</div>
+        <div id="history-table-wrap" class="table-responsive" hidden>
+          <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>User</th><th class="text-center">Qty Changed</th><th>Adjustment Type</th><th>Adjusted On</th></tr></thead>
+            <tbody id="history-body"></tbody>
+          </table>
+        </div>
+        <p id="history-note" class="text-muted small mt-2 mb-0" hidden>Showing the latest 100 adjustments.</p>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Adjust inventory modal: rename product and/or set a new quantity -->
+<div class="modal fade" id="adjustInventoryModal" tabindex="-1" aria-labelledby="adjustInventoryTitle" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <form id="adjust-inventory-form" class="modal-content inventory-modal" method="post" action="{{ url_for('adjust_inventory') }}" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="product_id" id="adjust-product-id">
+      <!-- keeps the current search, filter and page after saving -->
+      <input type="hidden" name="q" value="{{ q }}">
+      <input type="hidden" name="stock" value="{{ stock }}">
+      <input type="hidden" name="page" value="{{ pagination.page }}">
+
+      <div class="modal-header">
+        <h5 class="modal-title" id="adjustInventoryTitle"><i class="bi bi-sliders"></i> Adjust Inventory</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <div class="modal-body">
+        <p class="mb-1"><strong id="adjust-product-label"></strong></p>
+        <p class="text-muted small">Current stock: <strong id="adjust-current-stock">0</strong> units</p>
+
+        {% if g.user.has_permission('products') %}
+        <div class="mb-3">
+          <label for="adjust-name" class="form-label small mb-1">New Product Name <span class="text-muted">(leave blank to keep current)</span></label>
+          <input type="text" id="adjust-name" name="product_name" class="form-control" maxlength="150" autocomplete="off">
+        </div>
+        {% endif %}
+
+        <div class="mb-3">
+          <label for="adjust-quantity" class="form-label small mb-1">New Quantity <span class="text-muted">(leave blank to keep current)</span></label>
+          <input type="number" id="adjust-quantity" name="new_quantity" class="form-control" min="0" max="1000000" step="1" inputmode="numeric">
+        </div>
+
+        <div class="mb-3">
+          <label for="adjust-type" class="form-label small mb-1">Adjustment Type</label>
+          <select id="adjust-type" name="adjustment_type" class="form-select">
+            <option value="">Select a type</option>
+            {% for kind, direction in adjustment_types %}<option value="{{ kind }}" data-direction="{{ direction }}">{{ kind|title }}</option>{% endfor %}
+          </select>
+          <div class="form-text">Required when the quantity changes.</div>
+        </div>
+
+        <div class="mb-3">
+          <label for="adjust-reason" class="form-label small mb-1">Reason <span class="text-muted">(optional)</span></label>
+          <input type="text" id="adjust-reason" name="reason" class="form-control" maxlength="255" autocomplete="off">
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center">
+          <span class="text-muted">Quantity change:</span>
+          <strong id="adjust-change">—</strong>
+        </div>
+        <div id="adjust-error" class="alert alert-danger py-2 mt-3 mb-0" role="alert" hidden></div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" id="adjust-save" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
 {% endblock %}
 {% block scripts %}
 <script>
@@ -143,13 +261,13 @@ function initInventoryPage() {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => {
       const params = new URLSearchParams(window.location.search);
-      params.delete('page');                          
+      params.delete('page');                          // new search starts at page 1
       if (search.value.trim()) params.set('q', search.value.trim());
       else params.delete('q');
       window.location.search = params.toString();
     }, 400);                                          // wait until typing pauses
   });
-  if (search.value) {                                 // keep the cursor at the end after reload
+  if (search.value) {                                 
     search.focus();
     search.setSelectionRange(search.value.length, search.value.length);
   }
@@ -181,7 +299,7 @@ function initInventoryPage() {
 
   window.selectStockEntryMode = function (mode, clickEvent) {
     if (mode !== entryMode) {
-
+      // Clear the method being abandoned so only one method ever supplies the quantity.
       if (mode === 'cases') {
         totalUnits.value = '';
       } else {
@@ -195,7 +313,7 @@ function initInventoryPage() {
     error.hidden = true;
     updateTotal();
 
-    // Clicking the card's padding/label moves the cursor into its first field.
+    // Clicking the card's padding/label (not an input) moves the cursor into its first field.
     if (clickEvent && !clickEvent.target.closest('input')) {
       (mode === 'cases' ? cases : totalUnits).focus();
     }
@@ -244,7 +362,7 @@ function initInventoryPage() {
       return;
     }
 
-    submittedTotal.value = String(received);
+    submittedTotal.value = String(received);   // this is the only value the server reads
     nextButton.disabled = true;
     nextButton.textContent = 'Saving…';
   });
@@ -261,6 +379,151 @@ function initInventoryPage() {
       document.getElementById('import-csv-form').submit();
     });
   }
+
+  // ---------------------------------------------------------------------
+  // Row actions: three-dots menu, View details, Adjust inventory
+  // ---------------------------------------------------------------------
+
+  document.querySelectorAll('.row-actions-toggle').forEach(toggle =>
+    new bootstrap.Dropdown(toggle, { popperConfig: { strategy: 'fixed' } }));
+
+  const historyModal = document.getElementById('inventoryHistoryModal');
+  const historyUrl = "{{ url_for('inventory_history') }}";
+  const historyBody = document.getElementById('history-body');
+  const historyParts = {
+    loading: document.getElementById('history-loading'),
+    error: document.getElementById('history-error'),
+    empty: document.getElementById('history-empty'),
+    table: document.getElementById('history-table-wrap')
+  };
+  const historyNote = document.getElementById('history-note');
+  let historyRequest = 0;
+
+  function showHistory(state) {
+    Object.keys(historyParts).forEach(key => { historyParts[key].hidden = key !== state; });
+  }
+
+  function addCell(row, text, className) {
+    const cell = row.insertCell();
+    if (className) cell.className = className;
+    cell.textContent = text;
+    return cell;
+  }
+
+  historyModal.addEventListener('show.bs.modal', function (event) {
+    const trigger = event.relatedTarget;
+    const token = ++historyRequest;
+    document.getElementById('history-product-label').textContent = trigger.dataset.productName;
+    document.getElementById('history-current-stock').textContent = Number(trigger.dataset.productQuantity || 0).toLocaleString();
+    historyBody.innerHTML = '';
+    historyNote.hidden = true;
+    showHistory('loading');
+
+    fetch(historyUrl + '?product_id=' + encodeURIComponent(trigger.dataset.productId),
+          { headers: { 'Accept': 'application/json' } })
+      .then(response => { if (!response.ok) throw new Error('Request failed'); return response.json(); })
+      .then(data => {
+        if (token !== historyRequest) return;          // a newer request replaced this one
+        if (!data.items.length) { showHistory('empty'); return; }
+        data.items.forEach(item => {
+          const row = historyBody.insertRow();
+          addCell(row, item.username);
+          const change = Number(item.quantity_changed);
+          addCell(row, (change > 0 ? '+' : '') + change.toLocaleString(),
+                  'text-center' + (change > 0 ? 'text-success' : change < 0 ? 'text-danger' : ''));
+          const typeCell = addCell(row, item.adjustment_type.charAt(0).toUpperCase() + item.adjustment_type.slice(1));
+          if (item.reason) {
+            const reason = document.createElement('div');
+            reason.className = 'text-muted small';
+            reason.textContent = item.reason;
+            typeCell.appendChild(reason);
+          }
+          addCell(row, item.date, 'text-nowrap');
+        });
+        historyNote.hidden = !data.truncated;
+        showHistory('table');
+      })
+      .catch(() => {
+        if (token !== historyRequest) return;
+        historyParts.error.textContent = 'Could not load the adjustment history. Please try again.';
+        showHistory('error');
+      });
+  });
+
+  // ----- Adjust inventory: new name and/or new quantity -----
+  const adjustModal = document.getElementById('adjustInventoryModal');
+  const adjustForm = document.getElementById('adjust-inventory-form');
+  const adjustName = document.getElementById('adjust-name');
+  const adjustQty = document.getElementById('adjust-quantity');
+  const adjustType = document.getElementById('adjust-type');
+  const adjustChange = document.getElementById('adjust-change');
+  const adjustError = document.getElementById('adjust-error');
+  const adjustSave = document.getElementById('adjust-save');
+  let adjustCurrent = 0;
+
+  // Shows the quantity change and disables adjustment types that don't fit it
+  function updateAdjustPreview() {
+    const raw = adjustQty.value.trim();
+    const next = Number(raw);
+    const delta = raw !== '' && Number.isInteger(next) && next >= 0 ? next - adjustCurrent : null;
+
+    Array.from(adjustType.options).forEach(option => {
+      if (!option.value) return;
+      const direction = option.dataset.direction;
+      option.disabled = delta !== null && delta !== 0 &&
+        ((direction === 'up' && delta < 0) || (direction === 'down' && delta > 0));
+    });
+    if (adjustType.selectedOptions[0] && adjustType.selectedOptions[0].disabled) adjustType.value = '';
+
+    adjustChange.textContent = delta === null ? '—' : (delta > 0 ? '+' : '') + delta.toLocaleString();
+    adjustError.hidden = true;
+  }
+
+  adjustQty.addEventListener('input', updateAdjustPreview);
+  adjustType.addEventListener('change', () => { adjustError.hidden = true; });
+
+  adjustModal.addEventListener('show.bs.modal', function (event) {
+    const trigger = event.relatedTarget;
+    adjustCurrent = Number(trigger.dataset.productQuantity || 0);
+    adjustForm.reset();
+    document.getElementById('adjust-product-id').value = trigger.dataset.productId;
+    document.getElementById('adjust-product-label').textContent = trigger.dataset.productName;
+    document.getElementById('adjust-current-stock').textContent = adjustCurrent.toLocaleString();
+    if (adjustName) adjustName.placeholder = trigger.dataset.productName;
+    adjustQty.placeholder = String(adjustCurrent);
+    adjustSave.disabled = false;
+    adjustSave.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save Changes';
+    updateAdjustPreview();
+  });
+
+  adjustModal.addEventListener('shown.bs.modal', () => adjustQty.focus());
+
+  adjustForm.addEventListener('submit', function (event) {
+    const raw = adjustQty.value.trim();
+    const name = adjustName ? adjustName.value.trim() : '';
+    let message = '';
+
+    if (!document.getElementById('adjust-product-id').value) {
+      message = 'No product selected. Close this window and choose a product row.';
+    } else if (!name && raw === '') {
+      message = 'Enter a new product name or a new quantity.';
+    } else if (raw !== '') {
+      const next = Number(raw);
+      if (!Number.isInteger(next) || next < 0 || next > 1000000) {
+        message = 'New quantity must be a whole number between 0 and 1,000,000.';
+      } else if (next !== adjustCurrent && !adjustType.value) {
+        message = 'Select an adjustment type for the quantity change.';
+      }
+    }
+    if (message) {
+      event.preventDefault();
+      adjustError.textContent = message;
+      adjustError.hidden = false;
+      return;
+    }
+    adjustSave.disabled = true;
+    adjustSave.textContent = 'Saving…';
+  });
 }
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initInventoryPage);
 else initInventoryPage();
