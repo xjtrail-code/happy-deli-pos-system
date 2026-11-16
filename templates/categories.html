@@ -90,7 +90,7 @@
                     <tr class="category-row"
                         data-search="{{ (category.categoryName ~ ' ' ~ (category.description or ''))|lower }}">
                         <td>
-                            <strong>{{ category.categoryName }}</strong>
+                            {{ category.categoryName }}
                         </td>
                         <td>
                             {{ category.description or '—' }}

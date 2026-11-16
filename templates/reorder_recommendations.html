@@ -6,6 +6,17 @@
     Reorder Recommendations
 </h2>
   {% for category, message in get_flashed_messages(with_categories=true) %}<div class="alert alert-{{ category }}" role="status">{{ message }}</div>{% endfor %}
+  
+  {% if product %}
+  <form method="post" class="alert alert-info d-flex align-items-center justify-content-between">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="product_id" value="{{ product.id }}">
+    <input type="hidden" name="action" value="generate_one">
+    <span>Create a reorder recommendation for <strong>{{ product.productName }}</strong>?</span>
+    <button class="btn btn-primary" type="submit">Create recommendation</button>
+  </form>
+  {% endif %}
+
   <form method="post" class="mb-4"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-primary" name="action" value="generate">Generate recommendations</button></form>
   <p class="small text-muted">These actions record status only. Contact the supplier to place the order, receive delivered stock through Inventory, then mark the recommendation complete. Active recommendations prevent duplicate suggestions.</p>
   <div class="table-responsive"><table class="table table-striped align-middle"><thead><tr><th>Product</th><th>Supplier</th><th>Order date</th><th>Quantity</th><th>Estimated total</th><th>Status</th><th>Actions</th></tr></thead><tbody>

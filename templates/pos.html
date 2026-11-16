@@ -90,11 +90,11 @@
                         <table class="table pos-table mb-0">
                             <thead>
                                 <tr>
+                                    <th class="text-center">Remove</th>
                                     <th>Product</th>
                                     <th>Quantity</th>
                                     <th>Price</th>
                                     <th class="text-end">Total</th>
-                                    <th class="text-center">Remove</th>
                                 </tr>
                             </thead>
 
@@ -249,7 +249,9 @@ const $ = id => document.getElementById(id);
 function showAlert(message, type = "danger") {
     const alertBox = $("posAlert");
     alertBox.className = "alert alert-" + type;
-    alertBox.textContent = message;
+    alertBox.innerHTML = message;
+    window.scrollTo({ top: 0, behavior: "auto" });
+    $("productSearch").focus({ preventScroll: true });
 }
 
 function clearAlert() {
@@ -263,6 +265,10 @@ function displayCart() {
 
     for (let item of cart) {
         const row = document.createElement("tr");
+
+        // REMOVE BUTTONS
+        const removeCell = document.createElement("td");
+        removeCell.className = "text-center";
 
         const nameCell = document.createElement("td");
         nameCell.textContent = item.name;
@@ -278,9 +284,6 @@ function displayCart() {
         totalCell.textContent =
             "$" + (item.price * item.quantity).toFixed(2);
 
-        // REMOVE BUTTONS
-        const removeCell = document.createElement("td");
-        removeCell.className = "text-center";
 
         // REMOVE ONE QUANTITY
         const decreaseButton = document.createElement("button");
@@ -318,14 +321,14 @@ function displayCart() {
             clearAlert();
         });
 
-        removeCell.append(decreaseButton, removeButton);
+        removeCell.append(decreaseButton, removeButton); //Here is where remove button is located
 
         row.append(
+            removeCell,
             nameCell,
             quantityCell,
             priceCell,
-            totalCell,
-            removeCell
+            totalCell
         );
 
         cartTable.appendChild(row);
@@ -400,7 +403,11 @@ $("addItemButton").addEventListener("click", function () {
         .then(response => response.json())
         .then(product => {
             if (!product.found) {
-                showAlert("Product not found.");
+                showAlert(
+                    "Product not found. " +
+                    "<a href='{{ url_for('product_entry') }}?barcode=" + encodeURIComponent(search) +
+                    "' class='alert-link'>Add to inventory.</a>"    
+                );
                 return;
             }
 
@@ -416,7 +423,9 @@ $("addItemButton").addEventListener("click", function () {
             if (currentQuantity >= product.quantity) {
                 showAlert(
                     product.name + " is out of stock or has reached " +
-                    "the available quantity. Reorder product."
+                    "the available quantity. " +
+                    "<a href='{{ url_for('reorder_recommendation') }}?product_id=" + product.id +
+                    "' class='alert-link'>Reorder product.</a>"
                 );
                 return;
             }

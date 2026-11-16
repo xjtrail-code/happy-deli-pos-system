@@ -1595,7 +1595,6 @@ body:has(.login-page) {
 
 /* ============================================================
    REPORTS & ANALYTICS PAGE
-   Add these rules to the BOTTOM of static/css/style.css
    ============================================================ */
 
 .reports-page .reports-all-transactions-badge {
@@ -1613,7 +1612,6 @@ body:has(.login-page) {
 
 /* ==============================================================
    HAPPY DELI JUNCO — SETTINGS PAGE
-   Paste at the END of static/css/style.css
    ============================================================== */
 .settings-page { color:#102c4d; }
 .settings-topbar { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px; margin-bottom:27px; }
