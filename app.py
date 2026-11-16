@@ -572,6 +572,10 @@ def product_entry():
     categories = db.session.scalars(
         db.select(Category).order_by(Category.categoryName)
     ).all()
+
+    if request.method == 'GET' and request.args.get('barcode'):
+        form_data = {'barcode': request.args.get('barcode', '').strip()[:50]}
+        
     return render_template(
         'product_entry.html',
         message=message,
@@ -1145,6 +1149,7 @@ def product_lookup(barcode):
         )
         return {
             'found': True,
+            'id': product.id,
             'supplier_id': supplier_link.supplierId if supplier_link else None,
             'reorder_threshold': product.inventory.reorderThreshold if product.inventory else None,
             'name': product.productName,
@@ -1811,6 +1816,34 @@ def reorder_recommendation():
                 created += 1
             db.session.commit()
             flash(f'Created {created} recommendations. {missing} low-stock products need a linked supplier.', 'success')
+        
+        elif action == 'generate_one':
+            stock = db.session.scalar(db.select(Inventory).join(Product).where(
+                Inventory.productId == request.form.get('product_id', type=int),
+                Product.isActive.is_(True)))
+            if stock is None:
+                abort(404)
+            existing = db.session.scalar(db.select(ReorderRecommendation).where(
+                ReorderRecommendation.productId == stock.productId,
+                ReorderRecommendation.status.in_(['pending', 'approved', 'ordered'])))
+            offer = db.session.scalar(db.select(SupplierProduct).where(
+                SupplierProduct.productId == stock.productId).order_by(
+                SupplierProduct.isPrefered.desc(), SupplierProduct.unitCost,
+                SupplierProduct.id))
+            if existing:
+                flash('This product already has an active recommendation.', 'warning')
+            elif not offer:
+                flash('Link this product to a supplier before creating a recommendation.', 'warning')
+            else:
+                db.session.add(ReorderRecommendation(
+                    productId=stock.productId, supplierId=offer.supplierId,
+                    recommendedQuantity=max(stock.reorderQuantity,
+                                            stock.reorderThreshold + 1 - stock.quantityOnHand,
+                                            offer.minimumOrderQuantity),
+                    recommendedOrderDate=datetime.now(),
+                    estimatedUnitCost=offer.unitCost, status='pending'))
+                db.session.commit()
+                flash('Recommendation created.', 'success')
         elif action in ('approve', 'order', 'complete', 'cancel'):
             recommendation = db.get_or_404(ReorderRecommendation, request.form.get('recommendation_id', type=int))
             transitions = {'approve': ('pending', 'approved'), 'order': ('approved', 'ordered'),
@@ -1828,8 +1861,10 @@ def reorder_recommendation():
         return redirect(url_for('reorder_recommendation'))
     recommendations = db.session.scalars(db.select(ReorderRecommendation).order_by(
         ReorderRecommendation.createdDate.desc(), ReorderRecommendation.id.desc())).all()
-    return render_template('reorder_recommendations.html', recommendations=recommendations)
-
+    product = db.session.get(Product, request.args.get('product_id', type=int)) \
+        if request.args.get('product_id') else None
+    return render_template('reorder_recommendations.html',
+                           recommendations=recommendations, product=product)
 
 # SUPPLIER MANAGEMENT
 
