@@ -1659,15 +1659,150 @@ def delete_employee(employee_id):
 
 
 # Settings
+
 @app.route('/settings')
 @login_required('admin')
 def settings():
     business_info = db.session.get(BusinessInfo, 1)
 
+    project_dir = Path(__file__).resolve().parent
+
+    project_files = [
+        file for folder in [
+            project_dir,
+            project_dir / 'templates',
+            project_dir / 'static'
+        ]
+        if folder.exists()
+        for file in folder.rglob('*')
+        if file.is_file()
+        and file.suffix.lower() in ('.py', '.html', '.css', '.js')
+        and not any(part in ('.venv', 'venv', '__pycache__', '.git')
+                    for part in file.parts)
+    ]
+
+    last_updated = (
+        datetime.fromtimestamp(
+            max(file.stat().st_mtime for file in project_files)
+        ).strftime('%B %Y')
+        if project_files else 'Not available'
+    )
+
+    environment = (
+        'Development'
+        if app.debug else 'Production'
+    )
+
     return render_template(
         'settings.html',
-        business_info=business_info
+        business_info=business_info,
+        environment=environment,
+        app_version='1.0.0',
+        last_updated=last_updated
     )
+
+
+@app.route('/settings/profile', methods=['POST'])
+@login_required('admin')
+def update_profile():
+    user = g.user
+
+    first_name = request.form.get('firstName', '').strip()
+    last_name = request.form.get('lastName', '').strip()
+    username = request.form.get('username', '').strip().lower()
+    email = request.form.get('email', '').strip().lower()
+
+    if not all([first_name, last_name, username, email]):
+        flash('All profile fields are required.', 'danger')
+        return redirect(url_for('settings'))
+
+    if (len(first_name) > 50 or len(last_name) > 50
+            or len(username) > 50 or len(email) > 100):
+        flash('One or more profile fields are too long.', 'danger')
+        return redirect(url_for('settings'))
+
+    if '@' not in email or '.' not in email.rsplit('@', 1)[-1]:
+        flash('Enter a valid email address.', 'danger')
+        return redirect(url_for('settings'))
+
+    existing_username = db.session.scalar(
+        db.select(User).where(
+            User.username == username,
+            User.id != user.id
+        )
+    )
+
+    if existing_username:
+        flash('Username is already taken.', 'danger')
+        return redirect(url_for('settings'))
+
+    existing_email = db.session.scalar(
+        db.select(User).where(
+            User.email == email,
+            User.id != user.id
+        )
+    )
+
+    if existing_email:
+        flash('Email is already in use.', 'danger')
+        return redirect(url_for('settings'))
+
+    user.firstName = first_name
+    user.lastName = last_name
+    user.username = username
+    user.email = email
+
+    try:
+        db.session.commit()
+        flash('Profile updated successfully.', 'success')
+    except IntegrityError:
+        db.session.rollback()
+        flash('Username or email is already in use.', 'danger')
+
+    return redirect(url_for('settings'))
+
+
+# CHANGE PASSWORD
+@app.route('/settings/change-password', methods=['POST'])
+@login_required('admin')
+def change_password():
+    user = g.user
+
+    current_password = request.form.get('currentPassword', '')
+    new_password = request.form.get('newPassword', '')
+    confirm_password = request.form.get('confirmPassword', '')
+
+    if not user.check_password(current_password):
+        flash('Current password is incorrect.', 'danger')
+        return redirect(url_for('settings'))
+
+    if len(new_password) < 12:
+        flash('New password must be at least 12 characters.', 'danger')
+        return redirect(url_for('settings'))
+
+    if len(new_password) > 128:
+        flash('New password is too long.', 'danger')
+        return redirect(url_for('settings'))
+
+    if new_password != confirm_password:
+        flash('New passwords do not match.', 'danger')
+        return redirect(url_for('settings'))
+
+    if user.check_password(new_password):
+        flash('New password must be different from your current password.', 'danger')
+        return redirect(url_for('settings'))
+
+    try:
+        user.set_password(new_password)
+        db.session.commit()
+        flash('Password updated successfully.', 'success')
+
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('Failed to update password')
+        flash('Unable to update password.', 'danger')
+
+    return redirect(url_for('settings'))
 
 
 @app.route('/settings/business-info', methods=['POST'])

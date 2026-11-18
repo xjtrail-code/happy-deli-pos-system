@@ -206,10 +206,72 @@
                         </h3>
                     </div>
 
-                    <div class="chart-wrap"
-                         style="height:320px;">
-                        <canvas id="dashboardPaymentChart"></canvas>
-                    </div>
+                    
+<div class="row align-items-center g-3">
+
+    <!-- DOUGHNUT CHART -->
+    <div class="col-12 col-md-6">
+        <div class="position-relative mx-auto"
+             style="height:250px; max-width:250px;">
+
+            <canvas id="dashboardPaymentChart"></canvas>
+
+            <!-- CENTER TOTAL -->
+            <div class="position-absolute top-50 start-50
+                        translate-middle text-center"
+                 style="pointer-events:none;">
+
+                <div class="fw-bold fs-4">
+                    ${{ "%.2f"|format(cash_sales + card_sales) }}
+                </div>
+
+                <div class="small text-muted">
+                    Total Sales
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- PAYMENT DETAILS -->
+    <div class="col-12 col-md-4">
+
+        {% set payment_total = cash_sales + card_sales %}
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <span>
+                <i class="bi bi-square-fill me-2"
+                   style="color:#123a60;"></i>
+                Cash
+            </span>
+
+            <span class="fw-semibold">
+                ${{ "%.2f"|format(cash_sales) }}
+                <small class="text-muted">
+                    ({{ "%.1f"|format(cash_sales / payment_total * 100 if payment_total else 0) }}%)
+                </small>
+            </span>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center">
+            <span>
+                <i class="bi bi-square-fill me-2"
+                   style="color:#58a6ff;"></i>
+                Card
+            </span>
+
+            <span class="fw-semibold">
+                ${{ "%.2f"|format(card_sales) }}
+                <small class="text-muted">
+                    ({{ "%.1f"|format(card_sales / payment_total * 100 if payment_total else 0) }}%)
+                </small>
+            </span>
+        </div>
+
+    </div>
+
+</div>
+
 
                     <p id="paymentEmpty"
                        class="text-center text-muted small d-none">
@@ -488,9 +550,9 @@ document.addEventListener('DOMContentLoaded', function () {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            cutout: '70%',
+            cutout: '62%',
             plugins: {
-                legend: { position: 'bottom' },
+                legend: { display: false },
                 tooltip: {
                     callbacks: {
                         label: context =>

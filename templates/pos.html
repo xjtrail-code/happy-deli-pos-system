@@ -17,13 +17,15 @@
             </h2>
         </div>
 
-        {% if g.user.role == 'admin' %}
-        <a href="{{ url_for('admin_dashboard') }}"
-           class="btn btn-outline-secondary">
-            <i class="bi bi-arrow-left me-2"></i>
-            Back to Dashboard
-        </a>
-        {% endif %}
+        
+{% if g.user.role == 'admin' %}
+<a href="{{ url_for('admin_dashboard') }}"
+   class="btn btn-outline-primary settings-back">
+    <i class="bi bi-arrow-left me-2"></i>
+    Back to Dashboard
+</a>
+{% endif %}
+
     </div>
 
     <!-- STATUS MESSAGE -->
