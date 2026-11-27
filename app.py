@@ -2210,9 +2210,10 @@ def supplier_management():
 
 
 if __name__ == '__main__':
+    debug_enabled = os.environ.get('FLASK_DEBUG', '0').strip().lower() in ('1', 'true', 'yes', 'on')
     with app.app_context():
         #db.drop_all()
         #print("All table were dropped")
         #db.create_all()
         print("All tables were created")
-    app.run(debug=True)
+    app.run(debug=debug_enabled)
