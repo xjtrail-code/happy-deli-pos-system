@@ -13,10 +13,10 @@
   {% if request.args.get('stock_added') %}<div class="alert alert-success alert-dismissible fade show">Stock received and inventory updated successfully.<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{% elif request.args.get('updated') %}<div class="alert alert-success alert-dismissible fade show">Inventory updated successfully.<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{% endif %}
   {% for category, message in get_flashed_messages(with_categories=true) %}<div class="alert alert-{{ category }} alert-dismissible fade show" role="status">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>{% endfor %}
   <div class="inventory-summary-strip">
-    <div class="inventory-stat"><span class="stat-icon blue"><i class="bi bi-box-seam"></i></span><div><span>Total Products</span><strong>{{ summary.total }}</strong></div></div>
-    <div class="inventory-stat"><span class="stat-icon green"><i class="bi bi-check-circle-fill"></i></span><div><span>In Stock</span><strong>{{ summary.in_stock }}</strong></div></div>
-    <div class="inventory-stat"><span class="stat-icon amber"><i class="bi bi-exclamation-triangle-fill"></i></span><div><span>Low Stock</span><strong>{{ summary.low }}</strong></div></div>
-    <div class="inventory-stat"><span class="stat-icon red"><i class="bi bi-x-circle-fill"></i></span><div><span>Out of Stock</span><strong>{{ summary.out }}</strong></div></div>
+    <div class="inventory-stat"><span class="stat-icon blue"><i class="bi bi-box-seam"></i></span><div><span class="text-muted mb-2">Total Products</span><strong class="text-muted mb-2">{{ summary.total }}</strong></div></div>
+    <div class="inventory-stat"><span class="stat-icon green"><i class="bi bi-check-circle-fill"></i></span><div><span class="text-muted mb-2">In Stock</span><strong class="text-muted mb-2">{{ summary.in_stock }}</strong></div></div>
+    <div class="inventory-stat"><span class="stat-icon amber"><i class="bi bi-exclamation-triangle-fill"></i></span><div><span class="text-muted mb-2">Low Stock</span><strong class="text-muted mb-2">{{ summary.low }}</strong></div></div>
+    <div class="inventory-stat"><span class="stat-icon red"><i class="bi bi-x-circle-fill"></i></span><div><span class="text-muted mb-2">Out of Stock</span><strong class="text-muted mb-2">{{ summary.out }}</strong></div></div>
   </div>
   <div class="inventory-filters" role="group" aria-label="Filter products">
     {% for key, label in [('all', 'All Products'), ('low', 'Low Stock'), ('out', 'Out of Stock')] %}

@@ -2,9 +2,9 @@
 {% block title %}Reorder Recommendations | Happy Deli Junco{% endblock %}
 {% block content %}
 <div class="container-fluid py-4">
-  <h2 class="fw-bold mb-1" style="color:#123a60;">
+  <h1 class="fw-bold mb-1" style="color:#123a60;">
     Reorder Recommendations
-</h2>
+</h1>
   {% for category, message in get_flashed_messages(with_categories=true) %}<div class="alert alert-{{ category }}" role="status">{{ message }}</div>{% endfor %}
   
   {% if product %}

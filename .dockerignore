@@ -1,0 +1,28 @@
+# Environment variables and secrets
+.env
+.env.*
+.flaskenv
+instance/
+*.pem
+*.key
+
+# Virtual environment
+venv313/
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Exclude git history and configuration
+.git/
+.gitignore
+*.md
+.vscode/
+
+# Exclude build-time ignore files
+.dockerignore
+.gcloudignore

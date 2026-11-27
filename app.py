@@ -1,5 +1,7 @@
 ﻿import os
 from dotenv import load_dotenv
+from urllib.parse import quote_plus
+from werkzeug.middleware.proxy_fix import ProxyFix
 import secrets
 import hashlib
 import smtplib
@@ -29,15 +31,27 @@ from werkzeug.security import check_password_hash, generate_password_hash
 load_dotenv()
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+def get_database_uri() -> str:
+    instance_conn = os.environ.get("INSTANCE_CONNECTION_NAME")
+    if instance_conn:
+        db_user = os.environ["DB_USER"]
+        db_pass = quote_plus(os.environ["DB_PASS"])
+        db_name = os.environ["DB_NAME"]
+        socket_dir = os.environ.get("DB_SOCKET_DIR", "/cloudsql")
+        return (
+            f"postgresql+psycopg://{db_user}:{db_pass}@/{db_name}"
+            f"?host={socket_dir}/{instance_conn}&options=-c%20search_path%3Djunco"
+        )
+
+    return os.environ["DATABASE_URL"]
 app.config.update(
     SECRET_KEY=os.environ.get('SECRET_KEY'),
-    SQLALCHEMY_DATABASE_URI=os.environ['DATABASE_URL'],
+    SQLALCHEMY_DATABASE_URI=get_database_uri(),
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
     SESSION_COOKIE_SECURE=os.environ.get('SESSION_COOKIE_SECURE') == '1',
     PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
-    # A fresh value on every server start expires logins from previous runs.
-    LOGIN_STARTUP_TOKEN=secrets.token_hex(32),
     SMTP_HOST=os.environ.get('SMTP_HOST', ''),
     SMTP_PORT=int(os.environ.get('SMTP_PORT', '587')),
     SMTP_USERNAME=os.environ.get('SMTP_USERNAME', ''),
@@ -62,16 +76,6 @@ if not app.config['SECRET_KEY']:
 
 #db = SQLAlchemy(app)
 db.init_app(app)
-
-@app.route("/test-db")
-def test_db():
-    try:
-        # Attempt to connect to the database
-        db.session.execute(db.text('SELECT 1'))
-        return "Database connection successful!"
-    except Exception as e:
-        return f"Database connection failed: {e}"
-
 
 def login_required(role=None, permission=None):
     def decorate(view):
@@ -99,8 +103,6 @@ app.jinja_env.globals['csrf_token'] = csrf_token
 
 @app.before_request
 def load_user_and_check_csrf():
-    if 'user_id' in session and session.get('login_startup_token') != app.config['LOGIN_STARTUP_TOKEN']:
-        session.clear()
     g.user = db.session.get(User, session['user_id']) if 'user_id' in session else None
     if g.user and not g.user.isActive:
         session.clear()
@@ -123,8 +125,7 @@ def home():
         if user and user.isActive and user.check_password(request.form.get('password', '')):
             session.clear()
             session['user_id'] = user.id
-            session['login_startup_token'] = app.config['LOGIN_STARTUP_TOKEN']
-            session.permanent = True
+            session.permanent = False   # cookie is deleted when the browser closes
             return redirect(url_for('admin_dashboard' if user.role == 'admin' else 'pos'))
         error = 'Invalid username or password.'
     return render_template('login.html', error=error), 401 if error else 200
@@ -135,13 +136,6 @@ def home():
 def logout():
     session.clear()
     return redirect(url_for('home'))
-
-'''@app.route('/logout')
-def logout():
-    session.pop('user_id', None)
-    flash('You have been logged out.', 'info')
-    return redirect(url_for('dashboard'))'''
-
 
 
 @app.route('/admin-dashboard')
@@ -326,28 +320,6 @@ def admin_dashboard():
         latest_transactions=latest_transactions,
         sales_change=sales_change
     )
-
-
-"""
-    # Five low-stock products needing attention
-    low_stock_products = db.session.scalars(
-        db.select(Inventory)
-        .join(Inventory.product)
-        .where(Inventory.quantityOnHand <= Inventory.reorderThreshold)
-        .order_by(
-            Inventory.quantityOnHand.asc(),
-            Inventory.productId.asc()
-        )
-        .limit(5)
-    ).all()
-
-    # Five most recent completed transactions
-    latest_transactions = sorted(
-        recent_transactions,
-        key=lambda transaction: transaction.transactionDate,
-        reverse=True
-    )[:5]
-"""
 
 
 @app.route('/pos')
@@ -1176,26 +1148,7 @@ def delete_product(product_id):
 
     return redirect(url_for('inventory'))
 
-'''@app.cli.command('seed-products')
-def seed_products():
-    """Insert sample products if the table is empty."""
-    if db.session.scalar(db.select(db.func.count(Product.id))) > 0:
-        click.echo('Products already exist, skipping.')
-        return
-    db.session.add_all(
-        Product(barcode=b, name=n, price=p, quantity=q)
-        for b, n, p, q in PRODUCT_SEED
-    )
-    db.session.commit()
-    click.echo(f'Seeded {len(PRODUCT_SEED)} products.')'''
-
-'''@app.cli.command('init-db')
-def init_db():
-    """Create missing tables without deleting existing data."""
-    db.create_all()
-    click.echo('Database initialized.')'''
-
-
+# Creates an initial new admin user. no needed afterwards
 @app.cli.command('create-user')
 @click.argument('username')
 @click.option('--role', type=click.Choice(['admin', 'cashier']), default='cashier')
@@ -1215,7 +1168,6 @@ def create_user(username, role, password):
     db.session.add(user)
     db.session.commit()
     click.echo(f'Created {role} account: {username}')
-
 
 
 @app.post('/complete-sale')
@@ -2257,74 +2209,10 @@ def supplier_management():
     )
 
 
-
-# ---------------------------------------------------------------------------
-# TEMPORARY SEED DATA - remove this block (and the calls in __main__) once
-# you no longer want the database rebuilt from scratch on startup.
-# ---------------------------------------------------------------------------
-SEED_USERS = [
-    # (email, username, firstName, lastName, role)
-    ("admin@example.com", "owner", "Ada", "Admin", "admin"),
-    ("cashier@example.com", "cashier", "Casey", "Cashier", "cashier"),
-]
-
-SEED_PRODUCTS = [
-    # (category, barcode, productName, sellingPrice, quantityOnHand, reorderThreshold, reorderQuantity)
-    ("Dairy & Eggs", "012345678901", "Whole Milk 1 Gal",     "3.99", 40, 10, 30),
-    ("Dairy & Eggs", "012345678902", "Large Eggs 12ct",      "4.29", 55, 15, 40),
-    ("Bakery",       "012345678903", "White Bread Loaf",     "2.49", 35, 10, 30),
-    ("Dairy & Eggs", "012345678904", "Butter Unsalted 1 lb", "4.99", 30,  8, 20),
-    ("Dairy & Eggs", "012345678905", "Cheddar Cheese 8 oz",  "3.79", 28,  8, 20),
-]
-
-
-def seed_database():
-    """Populate a freshly created database with starter users and products."""
-    from decimal import Decimal
-
-    password = os.environ.get('SEED_PASSWORD')
-    if not password or len(password) < 12:
-        raise SystemExit('Set SEED_PASSWORD (12+ characters) in your .env before starting the app.')
-
-    for email, username, first_name, last_name, role in SEED_USERS:
-        user = User(
-            email=email,
-            username=username,
-            firstName=first_name,
-            lastName=last_name,
-            role=role
-        )
-        user.set_password(password)
-        db.session.add(user)
-
-    categories = {}
-    for category, barcode, name, price, qty, threshold, reorder_qty in SEED_PRODUCTS:
-        if category not in categories:
-            categories[category] = Category(categoryName=category)
-
-        product = Product(
-            barcode=barcode,
-            productName=name,
-            sellingPrice=Decimal(price),
-            taxRate=Decimal('0.0635'),
-            category=categories[category]
-        )
-        product.inventory = Inventory(
-            quantityOnHand=qty,
-            reorderThreshold=threshold,
-            reorderQuantity=reorder_qty
-        )
-        db.session.add(product)
-
-    db.session.commit()
-
 if __name__ == '__main__':
     with app.app_context():
         #db.drop_all()
         #print("All table were dropped")
         #db.create_all()
-        #print("All tables were created")
-        db.create_all()      # TEMPORARY: rebuild tables from the models
-        #seed_database()      # TEMPORARY: insert starter data
-        print("Tables created and database seeded")
+        print("All tables were created")
     app.run(debug=True)
